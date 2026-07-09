@@ -29,7 +29,7 @@
 - Superposition sums multiple independently scaled input-location responses.
 - Signal builders include at least sinusoid, tap/impulse approximation, white noise, and custom file import or staged placeholder with clear acceptance note.
 - Axis/projection modes include at least `x`, `y`, `z`, `mag`, and one multi-axis projection matching a MATLAB mode.
-- One-sided frequency spectra follow MATLAB normalization rules.
+- One-sided frequency spectra follow documented normalization and FFT-length rules; if zero-padded browser spectra are used, MATLAB validation uses the same padded length.
 - Numerical comparisons against MATLAB reference outputs pass within documented tolerance for representative examples.
 
 ## UI

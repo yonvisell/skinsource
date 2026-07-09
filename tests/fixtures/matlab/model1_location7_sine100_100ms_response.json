@@ -1,0 +1,18 @@
+{
+  "fixture": "model1_location7_sine100_100ms_response.f32",
+  "model": 1,
+  "location": 7,
+  "frequencyHz": 100,
+  "durationMs": 100,
+  "targetAmplitude": 1,
+  "sampleRateHz": 1300,
+  "stimulusSamples": 130,
+  "impulseResponseSamples": 522,
+  "responseShape": [
+    651,
+    72,
+    3
+  ],
+  "layout": "matlab-column-major-time-output-axis",
+  "md5": "7c375b073bc1909a1b97f0ed665cc905"
+}

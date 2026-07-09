@@ -113,3 +113,46 @@ Result:
 
 - Dependencies installed with 0 reported vulnerabilities.
 - Initial scaffold build passed.
+
+### Compute Core
+
+Implemented TypeScript modules for:
+
+- manifest/chunk loading
+- signal generation
+- FFT-based full convolution via `fft.js`
+- SkinSource-style per-input scaling and superposition
+- axis/projection helpers
+- RMS and one-sided padded spectra
+
+Important convention:
+
+- `fft.js` inverse transforms are already normalized. An initial extra `1/N` scaling caused a failing convolution unit test and was removed.
+- Runtime convolution uses zero-padded power-of-two FFTs and crops to the full linear convolution length.
+- Runtime spectra currently use the next power-of-two FFT length. This is documented in `SPEC.md` and `ACCEPTANCE.md`; MATLAB spectrum parity should use the same padded length unless a robust arbitrary-length browser FFT backend is added later.
+
+Briefly evaluated `kissfft-js` for arbitrary FFT lengths, but did not keep it because the package real transform only accepts even sizes and its complex inverse path failed in this environment.
+
+Created `scripts/generate_matlab_reference_outputs.m` and ran:
+
+```bash
+/Applications/MATLAB_R2026a.app/bin/matlab -batch "run('scripts/generate_matlab_reference_outputs.m')"
+```
+
+Generated fixture:
+
+- `tests/fixtures/matlab/model1_location7_sine100_100ms_response.f32`
+- MATLAB reference shape `651 x 72 x 3`
+- fixture MD5 `7c375b073bc1909a1b97f0ed665cc905`
+
+Verification:
+
+```bash
+npm run test
+npm run build
+```
+
+Results:
+
+- Vitest passed: 3 files, 7 tests.
+- Production build passed.

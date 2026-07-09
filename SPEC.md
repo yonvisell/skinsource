@@ -61,7 +61,7 @@ Core operations:
 - Cache impulse-response FFTs per active chunk and FFT length during the session.
 - Sum independently rendered input-location responses by superposition.
 - Support axis selection and projection modes corresponding to MATLAB behavior: single axes, magnitude, PCA-like projection if feasible, RMS-energy projection, and sum of components.
-- Compute one-sided frequency magnitude spectra with MATLAB-compatible normalization.
+- Compute one-sided frequency magnitude spectra with documented normalization. The first implementation uses the next power-of-two FFT length because practical browser FFT libraries are power-of-two oriented; MATLAB validation for spectra should use the same padded length unless a robust arbitrary-length browser FFT is adopted later.
 
 Critical convention checks:
 
@@ -69,7 +69,7 @@ Critical convention checks:
 - FFT normalization
 - full convolution length
 - sample indexing and millisecond labels
-- one-sided spectrum doubling rules
+- one-sided spectrum doubling rules and chosen FFT length
 - window definitions
 - RMS and dB conventions
 
