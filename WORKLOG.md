@@ -91,3 +91,25 @@ Result:
 - all chunk byte counts and MD5 hashes match the manifest
 
 Note: `public/data/visualization.json` is currently 5.6 MB because it stores masks and adjacency data as JSON. This is acceptable for the first implementation, but it can be made more compact if startup load becomes a problem.
+
+### App Scaffold
+
+Created a Vite + React + TypeScript static app with relative asset base paths for GitHub Pages.
+
+Dependencies selected:
+
+- `fft.js` for portable FFT operations
+- `uplot` for fast scientific traces
+- `lucide-react` for compact icon controls
+
+Commands:
+
+```bash
+npm install
+npm run build
+```
+
+Result:
+
+- Dependencies installed with 0 reported vulnerabilities.
+- Initial scaffold build passed.
