@@ -48,3 +48,46 @@ Results:
 - Converted browser assets may be committed if size remains acceptable for GitHub Pages.
 - Typical stimulus duration target is up to about 4 seconds.
 - Exact PCA projection parity can be staged if other MATLAB-compatible projection modes are available first.
+
+### Data Conversion
+
+Created `scripts/convert_skinsource_assets.m` and ran:
+
+```bash
+/Applications/MATLAB_R2026a.app/bin/matlab -batch "run('scripts/convert_skinsource_assets.m')"
+```
+
+Results:
+
+- MATLAB loaded `dataset/impulseResponses.mat`.
+- Validated `dataTable` exists, has 80 rows, and contains required fields `Data`, `Model`, and `Location`.
+- Validated every model/location condition has `Data` shape `522 x 72 x 3`.
+- Wrote 80 float32 chunks under `public/data/impulse-responses/`.
+- Wrote `public/data/manifest.json`.
+- Wrote `public/data/visualization.json`.
+- Copied upstream reference maps to `public/reference/`.
+
+Generated asset sizes:
+
+```bash
+du -sh public public/data public/data/impulse-responses public/reference
+```
+
+- `public`: 41 MB
+- `public/data`: 40 MB
+- `public/data/impulse-responses`: 35 MB
+- `public/reference`: 960 KB
+
+Chunk validation:
+
+```bash
+node -e "<manifest md5/coverage check>"
+```
+
+Result:
+
+- 80 chunks
+- complete `4 x 20` coverage
+- all chunk byte counts and MD5 hashes match the manifest
+
+Note: `public/data/visualization.json` is currently 5.6 MB because it stores masks and adjacency data as JSON. This is acceptable for the first implementation, but it can be made more compact if startup load becomes a problem.

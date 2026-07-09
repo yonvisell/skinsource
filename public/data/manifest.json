@@ -1,0 +1,1301 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-09T16:47:26-07:00",
+  "source": {
+    "name": "SkinSource",
+    "datasetDoi": "10.5281/zenodo.10547601",
+    "publicationDoi": "10.1109/HAPTICS59260.2024.10520852",
+    "rawFile": "dataset/impulseResponses.mat",
+    "rawFileBytes": 6.9367862E+7,
+    "rawFileMd5": "9226dcefe3f80809a06376fbaa42ae91"
+  },
+  "sampleRateHz": 1300,
+  "impulseResponseSamples": 522,
+  "outputLocations": 72,
+  "axes": [
+    "x",
+    "y",
+    "z"
+  ],
+  "models": [
+    {
+      "id": 1,
+      "label": "Model 1",
+      "handLengthMm": 175,
+      "sex": "M",
+      "pixelToMmScale": 0.43958616604752004
+    },
+    {
+      "id": 2,
+      "label": "Model 2",
+      "handLengthMm": 165,
+      "sex": "F",
+      "pixelToMmScale": 0.41446695655909033
+    },
+    {
+      "id": 3,
+      "label": "Model 3",
+      "handLengthMm": 185,
+      "sex": "M",
+      "pixelToMmScale": 0.46470537553594976
+    },
+    {
+      "id": 4,
+      "label": "Model 4",
+      "handLengthMm": 165,
+      "sex": "F",
+      "pixelToMmScale": 0.41446695655909033
+    }
+  ],
+  "inputLocations": [
+    {
+      "id": 1,
+      "label": "Location 1",
+      "contactType": "in-axis",
+      "description": "In-axis stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 2,
+      "label": "Location 2",
+      "contactType": "in-axis",
+      "description": "In-axis stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 3,
+      "label": "Location 3",
+      "contactType": "in-axis",
+      "description": "In-axis stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 4,
+      "label": "Location 4",
+      "contactType": "in-axis",
+      "description": "In-axis stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 5,
+      "label": "Location 5",
+      "contactType": "in-axis",
+      "description": "In-axis stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 6,
+      "label": "Location 6",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 7,
+      "label": "Location 7",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 8,
+      "label": "Location 8",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 9,
+      "label": "Location 9",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 10,
+      "label": "Location 10",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 11,
+      "label": "Location 11",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 12,
+      "label": "Location 12",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 13,
+      "label": "Location 13",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 14,
+      "label": "Location 14",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 15,
+      "label": "Location 15",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 16,
+      "label": "Location 16",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 17,
+      "label": "Location 17",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 18,
+      "label": "Location 18",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 19,
+      "label": "Location 19",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    },
+    {
+      "id": 20,
+      "label": "Location 20",
+      "contactType": "perpendicular",
+      "description": "Perpendicular stimulation site from upstream SkinSource map."
+    }
+  ],
+  "chunks": [
+    {
+      "model": 1,
+      "location": 1,
+      "path": "impulse-responses/model-1-location-01.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "b90858a6f9696de64cea7f19b8edba12"
+    },
+    {
+      "model": 1,
+      "location": 2,
+      "path": "impulse-responses/model-1-location-02.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "44ed7b1e2c44bb137b9da1e223c82876"
+    },
+    {
+      "model": 1,
+      "location": 3,
+      "path": "impulse-responses/model-1-location-03.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "960be0ff59a143a881f99afd86ebd418"
+    },
+    {
+      "model": 1,
+      "location": 4,
+      "path": "impulse-responses/model-1-location-04.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "6febe92a9cf54232046fa0fea0cf7d85"
+    },
+    {
+      "model": 1,
+      "location": 5,
+      "path": "impulse-responses/model-1-location-05.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "2164b8b1b1d4043212ff32b65b7da8d1"
+    },
+    {
+      "model": 1,
+      "location": 6,
+      "path": "impulse-responses/model-1-location-06.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "ec20d634c4c28db05b78c15adb3faaa4"
+    },
+    {
+      "model": 1,
+      "location": 7,
+      "path": "impulse-responses/model-1-location-07.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "78861b408d15aa9e3ac91ed5cd7c7458"
+    },
+    {
+      "model": 1,
+      "location": 8,
+      "path": "impulse-responses/model-1-location-08.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "47c0170c03fb78c0015d8e806aca8fb4"
+    },
+    {
+      "model": 1,
+      "location": 9,
+      "path": "impulse-responses/model-1-location-09.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "bebabd89aff83d033b5e8151d86738b3"
+    },
+    {
+      "model": 1,
+      "location": 10,
+      "path": "impulse-responses/model-1-location-10.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "2a7f1df9247f3f431f99f99dbb4b7a6a"
+    },
+    {
+      "model": 1,
+      "location": 11,
+      "path": "impulse-responses/model-1-location-11.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "5574c2c6af9b76f88110a2ce2fa46fd3"
+    },
+    {
+      "model": 1,
+      "location": 12,
+      "path": "impulse-responses/model-1-location-12.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "fc4617661e019495621fc8699b96ac9b"
+    },
+    {
+      "model": 1,
+      "location": 13,
+      "path": "impulse-responses/model-1-location-13.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "eeb555d6196d10b5658ac9797a435043"
+    },
+    {
+      "model": 1,
+      "location": 14,
+      "path": "impulse-responses/model-1-location-14.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "a99394846b2cfaf5fc4e3e20e883cfcc"
+    },
+    {
+      "model": 1,
+      "location": 15,
+      "path": "impulse-responses/model-1-location-15.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "69a644b457ef9c39f45c5e7ae93462df"
+    },
+    {
+      "model": 1,
+      "location": 16,
+      "path": "impulse-responses/model-1-location-16.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "554e631648bd7b98bd56da1434128ff8"
+    },
+    {
+      "model": 1,
+      "location": 17,
+      "path": "impulse-responses/model-1-location-17.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "29a0b469543b3a5b26560e783e07f862"
+    },
+    {
+      "model": 1,
+      "location": 18,
+      "path": "impulse-responses/model-1-location-18.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "fb7d2c768aee5b568241af50ea48dd20"
+    },
+    {
+      "model": 1,
+      "location": 19,
+      "path": "impulse-responses/model-1-location-19.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "aebdd7fd392ec6160480efac524f1ece"
+    },
+    {
+      "model": 1,
+      "location": 20,
+      "path": "impulse-responses/model-1-location-20.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "d2b9bf1a1bf1918994f0116d244d61bf"
+    },
+    {
+      "model": 2,
+      "location": 1,
+      "path": "impulse-responses/model-2-location-01.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "d8df79fcec55dc7d97112c36c78be86e"
+    },
+    {
+      "model": 2,
+      "location": 2,
+      "path": "impulse-responses/model-2-location-02.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "b150d83191bfbf1796e70757fd6b658a"
+    },
+    {
+      "model": 2,
+      "location": 3,
+      "path": "impulse-responses/model-2-location-03.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "8fb457adc68b436d4ca9b764c503fe28"
+    },
+    {
+      "model": 2,
+      "location": 4,
+      "path": "impulse-responses/model-2-location-04.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "733688ff0feb6851862144043d920d35"
+    },
+    {
+      "model": 2,
+      "location": 5,
+      "path": "impulse-responses/model-2-location-05.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "5e190074b91d6ed994dcf36bd5afe09c"
+    },
+    {
+      "model": 2,
+      "location": 6,
+      "path": "impulse-responses/model-2-location-06.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "0bcbe0f30e5fa32afe4ccaddde309cfc"
+    },
+    {
+      "model": 2,
+      "location": 7,
+      "path": "impulse-responses/model-2-location-07.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "f7fef977f8d2b8b1d4454a5eac8425e8"
+    },
+    {
+      "model": 2,
+      "location": 8,
+      "path": "impulse-responses/model-2-location-08.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "6a51d486b8eafe00355d8ec6d92a165d"
+    },
+    {
+      "model": 2,
+      "location": 9,
+      "path": "impulse-responses/model-2-location-09.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "1a45cf18b069bf9e70d48f0e10e0243d"
+    },
+    {
+      "model": 2,
+      "location": 10,
+      "path": "impulse-responses/model-2-location-10.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "4f1fc87d84ad7ea0e08efc380d2239be"
+    },
+    {
+      "model": 2,
+      "location": 11,
+      "path": "impulse-responses/model-2-location-11.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "4751c00b9413fe46abbc8394cd1bdfae"
+    },
+    {
+      "model": 2,
+      "location": 12,
+      "path": "impulse-responses/model-2-location-12.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "c1e2f880810d1f320f927d9073b90f28"
+    },
+    {
+      "model": 2,
+      "location": 13,
+      "path": "impulse-responses/model-2-location-13.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "c0c0665b8ace8094749ef212f5aa4ccf"
+    },
+    {
+      "model": 2,
+      "location": 14,
+      "path": "impulse-responses/model-2-location-14.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "71a0aa859be6134933e0c21fe7942eae"
+    },
+    {
+      "model": 2,
+      "location": 15,
+      "path": "impulse-responses/model-2-location-15.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "38b18096ca35da98d90d479d7461a6f5"
+    },
+    {
+      "model": 2,
+      "location": 16,
+      "path": "impulse-responses/model-2-location-16.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "20ab5997b54baedbb2152112fdabeb11"
+    },
+    {
+      "model": 2,
+      "location": 17,
+      "path": "impulse-responses/model-2-location-17.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "a1ae5e8ebd9fa389c5b4608a46258b40"
+    },
+    {
+      "model": 2,
+      "location": 18,
+      "path": "impulse-responses/model-2-location-18.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "a2be90aee66e131c1ffb5171bdf03d73"
+    },
+    {
+      "model": 2,
+      "location": 19,
+      "path": "impulse-responses/model-2-location-19.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "9a2aef9b780477eba3aeb962aab8d1ca"
+    },
+    {
+      "model": 2,
+      "location": 20,
+      "path": "impulse-responses/model-2-location-20.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "36659b8e74db2c2766ad588fcea28024"
+    },
+    {
+      "model": 3,
+      "location": 1,
+      "path": "impulse-responses/model-3-location-01.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "770e58121a535e24404e92aca629bd9d"
+    },
+    {
+      "model": 3,
+      "location": 2,
+      "path": "impulse-responses/model-3-location-02.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "aea38a0185321b8d6f8f181ccbf1a5e6"
+    },
+    {
+      "model": 3,
+      "location": 3,
+      "path": "impulse-responses/model-3-location-03.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "9d9d27a3a2dc84dd0d9e3331aa238bd1"
+    },
+    {
+      "model": 3,
+      "location": 4,
+      "path": "impulse-responses/model-3-location-04.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "62a0417b2670a8ab70afe2e4c1caa67e"
+    },
+    {
+      "model": 3,
+      "location": 5,
+      "path": "impulse-responses/model-3-location-05.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "1cbf2814dd125418bd13af888061730e"
+    },
+    {
+      "model": 3,
+      "location": 6,
+      "path": "impulse-responses/model-3-location-06.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "553e73d47abbd22462cff1055d974139"
+    },
+    {
+      "model": 3,
+      "location": 7,
+      "path": "impulse-responses/model-3-location-07.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "358fb98059a49c5562ed8f6dd39d35a6"
+    },
+    {
+      "model": 3,
+      "location": 8,
+      "path": "impulse-responses/model-3-location-08.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "3e287e9ca8e292593be90204364c67be"
+    },
+    {
+      "model": 3,
+      "location": 9,
+      "path": "impulse-responses/model-3-location-09.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "aaf768a23a1791830e3457a068a1668e"
+    },
+    {
+      "model": 3,
+      "location": 10,
+      "path": "impulse-responses/model-3-location-10.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "598f0cb81530e073eb2ca0fd09b446e1"
+    },
+    {
+      "model": 3,
+      "location": 11,
+      "path": "impulse-responses/model-3-location-11.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "bee40280555d9fe74db77fe0b8437ea2"
+    },
+    {
+      "model": 3,
+      "location": 12,
+      "path": "impulse-responses/model-3-location-12.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "95df4df7e6442bac973977fbad045137"
+    },
+    {
+      "model": 3,
+      "location": 13,
+      "path": "impulse-responses/model-3-location-13.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "0aeac72d86fe38265253bff6e2432161"
+    },
+    {
+      "model": 3,
+      "location": 14,
+      "path": "impulse-responses/model-3-location-14.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "928c3b12c1742c641d360038b72b5783"
+    },
+    {
+      "model": 3,
+      "location": 15,
+      "path": "impulse-responses/model-3-location-15.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "1ec28aaac39fe3b411cb7384332dc6b8"
+    },
+    {
+      "model": 3,
+      "location": 16,
+      "path": "impulse-responses/model-3-location-16.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "809442e53c79ba4c603b011cbf9c0264"
+    },
+    {
+      "model": 3,
+      "location": 17,
+      "path": "impulse-responses/model-3-location-17.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "2b6bf11bf06dbc73d4decce92714ca0b"
+    },
+    {
+      "model": 3,
+      "location": 18,
+      "path": "impulse-responses/model-3-location-18.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "9cc2e76cd2774dca681025656ca1c6c0"
+    },
+    {
+      "model": 3,
+      "location": 19,
+      "path": "impulse-responses/model-3-location-19.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "c75c042e768b0cf8db745390c77f7c32"
+    },
+    {
+      "model": 3,
+      "location": 20,
+      "path": "impulse-responses/model-3-location-20.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "2bd5f08cd79ef6344eb9c7e47a39362a"
+    },
+    {
+      "model": 4,
+      "location": 1,
+      "path": "impulse-responses/model-4-location-01.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "44eab323af62d0640d8bcade46fbe7da"
+    },
+    {
+      "model": 4,
+      "location": 2,
+      "path": "impulse-responses/model-4-location-02.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "8108c8942409c65a4f9fe61116ce2ee8"
+    },
+    {
+      "model": 4,
+      "location": 3,
+      "path": "impulse-responses/model-4-location-03.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "09500b7b9a22f8fd70e14c26424ba84b"
+    },
+    {
+      "model": 4,
+      "location": 4,
+      "path": "impulse-responses/model-4-location-04.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "7951dd639b4716adfe3d45fabeaa6be5"
+    },
+    {
+      "model": 4,
+      "location": 5,
+      "path": "impulse-responses/model-4-location-05.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "6a6d2c691177b218c32dc8ba8f4d062a"
+    },
+    {
+      "model": 4,
+      "location": 6,
+      "path": "impulse-responses/model-4-location-06.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "6ddd7a8d718e280b783d6b940333a684"
+    },
+    {
+      "model": 4,
+      "location": 7,
+      "path": "impulse-responses/model-4-location-07.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "b7253633256b602a1eda5080a4ec2862"
+    },
+    {
+      "model": 4,
+      "location": 8,
+      "path": "impulse-responses/model-4-location-08.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "59c578ba4f312ee51910ee64ba0e0d68"
+    },
+    {
+      "model": 4,
+      "location": 9,
+      "path": "impulse-responses/model-4-location-09.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "d635478978be447dac50889e444e1904"
+    },
+    {
+      "model": 4,
+      "location": 10,
+      "path": "impulse-responses/model-4-location-10.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "e23cf85189cf98422f13bed2e4b964b7"
+    },
+    {
+      "model": 4,
+      "location": 11,
+      "path": "impulse-responses/model-4-location-11.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "c834280066119a68d66b36dc3187e6b1"
+    },
+    {
+      "model": 4,
+      "location": 12,
+      "path": "impulse-responses/model-4-location-12.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "9bf53b694a3b16fcca8b78970ea94a22"
+    },
+    {
+      "model": 4,
+      "location": 13,
+      "path": "impulse-responses/model-4-location-13.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "f80d5b3080660709650eb15f74f35754"
+    },
+    {
+      "model": 4,
+      "location": 14,
+      "path": "impulse-responses/model-4-location-14.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "f4f0cfa459de765737113e56f1531ac4"
+    },
+    {
+      "model": 4,
+      "location": 15,
+      "path": "impulse-responses/model-4-location-15.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "d9f3017d6fb34bf469a6f7e5a4c2370a"
+    },
+    {
+      "model": 4,
+      "location": 16,
+      "path": "impulse-responses/model-4-location-16.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "acd26aa679b7db3cf0a28f9eaf3bcda1"
+    },
+    {
+      "model": 4,
+      "location": 17,
+      "path": "impulse-responses/model-4-location-17.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "f840152bdf3d6893d00dfabdafa512d0"
+    },
+    {
+      "model": 4,
+      "location": 18,
+      "path": "impulse-responses/model-4-location-18.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "c010fa146801518a8dc784593f1bd2c6"
+    },
+    {
+      "model": 4,
+      "location": 19,
+      "path": "impulse-responses/model-4-location-19.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "d88f296adb244a3c50c9f691054b44bb"
+    },
+    {
+      "model": 4,
+      "location": 20,
+      "path": "impulse-responses/model-4-location-20.f32",
+      "dtype": "float32",
+      "shape": [
+        522,
+        72,
+        3
+      ],
+      "layout": "matlab-column-major-time-output-axis",
+      "bytes": 451008,
+      "md5": "716908230f58695ee794e6cabf84ab76"
+    }
+  ],
+  "visualization": {
+    "path": "visualization.json",
+    "inputMapImage": "../reference/inputLocations.png",
+    "outputMapImage": "../reference/outputLocations.png"
+  },
+  "layoutNotes": "Each .f32 file stores single(Data(:)) from MATLAB. For dimensions [time, output, axis], zero-based JS offset is time + 522 * (output + 72 * axis).",
+  "citation": "Tummala, N., Reardon, G., Fani, S., Goetz, D., Bianchi, M., and Visell, Y. (2024) SkinSource: A Data-Driven Toolbox for Predicting Touch-Elicited Vibrations in the Upper Limb. IEEE Haptics Symposium 2024. DOI: 10.1109/HAPTICS59260.2024.10520852"
+}
