@@ -1,0 +1,18 @@
+.DS_Store
+node_modules/
+dist/
+coverage/
+tmp/
+
+# Raw source dataset is downloaded locally from Zenodo and converted into
+# browser assets. Keep the large MATLAB source out of normal app commits.
+dataset/*.mat
+
+# Local paper reference copy. Cite/link the publication rather than
+# committing this downloaded PDF.
+SkinSource_A_Data-Driven_Toolbox_for_Predicting_Touch-Elicited_Vibrations_in_the_Upper_Limb.pdf
+
+# Generated verification artifacts
+verification/
+playwright-report/
+test-results/
