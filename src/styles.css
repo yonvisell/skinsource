@@ -25,7 +25,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -159,7 +160,8 @@ label {
 }
 
 select,
-input {
+input,
+textarea {
   width: 100%;
   min-height: 34px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -170,8 +172,15 @@ input {
   outline: none;
 }
 
+textarea {
+  min-height: 82px;
+  resize: vertical;
+  line-height: 1.35;
+}
+
 select:focus,
-input:focus {
+input:focus,
+textarea:focus {
   border-color: rgba(116, 216, 209, 0.62);
 }
 
@@ -194,6 +203,11 @@ input:focus {
   background: rgba(40, 134, 126, 0.28);
 }
 
+.action-button.subtle {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+}
+
 .render-button {
   border-color: rgba(231, 187, 83, 0.38);
   background: rgba(177, 126, 31, 0.26);
@@ -203,6 +217,33 @@ input:focus {
   display: grid;
   gap: 6px;
   min-height: 30px;
+}
+
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.preset-row button {
+  min-height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  padding: 5px 6px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #d9e1ea;
+  font-size: 11px;
+}
+
+.preset-row button:hover {
+  border-color: rgba(116, 216, 209, 0.32);
+  color: #ecfffd;
+}
+
+.field-note {
+  color: #8d99a8;
+  font-size: 10px;
+  line-height: 1.35;
 }
 
 .stimulus-row {

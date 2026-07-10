@@ -15,7 +15,7 @@ import {
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import "./styles.css";
-import { OUTPUT_LOCATIONS, type ProjectionMode } from "./lib/constants";
+import { OUTPUT_LOCATIONS, SAMPLE_RATE_HZ, type ProjectionMode } from "./lib/constants";
 import {
   ChunkStore,
   assetUrl,
@@ -49,6 +49,7 @@ import {
   makeSinusoid,
   makeTap,
   makeWhiteNoise,
+  normalizePeak,
   type SignalKind,
 } from "./lib/signals";
 import { ImpulseFftCache, renderVibrations } from "./lib/skinsource";
@@ -62,6 +63,7 @@ import type {
 
 type TabKey = "surface" | "time" | "frequency" | "export";
 type SurfaceMode = "sensors" | "interpolated";
+type StimulusPreset = "taps" | "superposition" | "noise";
 
 interface AppData {
   manifest: SkinSourceManifest;
@@ -115,6 +117,10 @@ function App() {
   const [frequencyHz, setFrequencyHz] = useState(100);
   const [seed, setSeed] = useState(0);
   const [targetAmplitude, setTargetAmplitude] = useState(1);
+  const [wavSignal, setWavSignal] = useState<Float32Array | null>(null);
+  const [wavFileName, setWavFileName] = useState<string | null>(null);
+  const [wavStatus, setWavStatus] = useState("No WAV loaded");
+  const [arrayText, setArrayText] = useState("");
   const [projection, setProjection] = useState<ProjectionMode>("mag");
   const [stimuli, setStimuli] = useState<AssignedStimulus[]>([]);
   const [projected, setProjected] = useState<ProjectedVibrations | null>(null);
@@ -219,31 +225,31 @@ function App() {
     });
   }
 
-  function buildSignal(): Float32Array {
-    if (signalKind === "sinusoid") {
-      return makeSinusoid({
-        durationMs,
-        frequencyHz,
-        window: "none",
-      });
+  function buildSignal(): Float32Array | null {
+    if (signalKind === "wav") {
+      return wavSignal;
     }
-    if (signalKind === "noise") {
-      return makeWhiteNoise({ durationMs, seed });
-    }
-    if (signalKind === "tap") {
-      return makeTap(durationMs, 12);
-    }
-    return makeImpulse({ durationMs });
+    return buildGeneratedSignal(signalKind, {
+      durationMs,
+      frequencyHz,
+      seed,
+    });
   }
 
   function addStimulus() {
     const signal = buildSignal();
+    if (!signal) {
+      setStatus("Choose a WAV file before assigning a WAV stimulus");
+      return;
+    }
     const label =
       signalKind === "sinusoid"
         ? `${frequencyHz} Hz sine`
         : signalKind === "noise"
           ? `white noise seed ${seed}`
-          : signalKind;
+          : signalKind === "wav"
+            ? wavFileName ?? "WAV"
+            : signalKind;
     const stimulus: AssignedStimulus = {
       id: `${inputLocation}-${Date.now()}`,
       location: inputLocation,
@@ -256,6 +262,103 @@ function App() {
       stimulus,
     ]);
     setStatus(`Assigned ${label} to input location ${inputLocation}`);
+  }
+
+  function applyStimulusRows() {
+    try {
+      const parsed = parseStimulusRows(arrayText, {
+        durationMs,
+        frequencyHz,
+        seed,
+        targetAmplitude,
+      });
+      if (parsed.length === 0) {
+        setStatus("No valid stimulus rows found");
+        return;
+      }
+      const locations = new Set(parsed.map((stimulus) => stimulus.location));
+      setStimuli((current) => [
+        ...current.filter((stimulus) => !locations.has(stimulus.location)),
+        ...parsed,
+      ]);
+      setStatus(`Assigned ${parsed.length} stimuli from rows`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function handleWavFile(file: File | null) {
+    if (!file) return;
+    setWavStatus(`Loading ${file.name}...`);
+    try {
+      const decoded = await decodeWavFile(file);
+      setWavSignal(decoded.signal);
+      setWavFileName(file.name);
+      setDurationMs(Math.round((1000 * decoded.signal.length) / SAMPLE_RATE_HZ));
+      setWavStatus(
+        `${file.name}: ${decoded.signal.length} samples at ${SAMPLE_RATE_HZ} Hz` +
+          (decoded.originalSampleRate === SAMPLE_RATE_HZ
+            ? ""
+            : `, resampled from ${decoded.originalSampleRate} Hz`),
+      );
+      setStatus(`Loaded WAV ${file.name}`);
+    } catch (error) {
+      setWavSignal(null);
+      setWavFileName(null);
+      setWavStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function loadStimulusPreset(preset: StimulusPreset) {
+    if (preset === "taps") {
+      setModel(3);
+      setProjection("mag");
+      setDurationMs(100);
+      setArrayText("7,tap,0,1\n8,tap,0,1\n9,tap,0,1\n10,tap,0,1");
+      setSelectedOutputs([20, 21, 22, 24]);
+      setStatus("Loaded multi-digit tap rows");
+      return;
+    }
+    if (preset === "superposition") {
+      setModel(3);
+      setProjection("x");
+      setDurationMs(50);
+      setArrayText("8,sinusoid,200,1\n13,sinusoid,200,1");
+      setSelectedOutputs([19, 21, 24, 32]);
+      setStatus("Loaded sinusoid superposition rows");
+      return;
+    }
+    setModel(2);
+    setProjection("x");
+    setDurationMs(Math.round((1000 * 1000) / SAMPLE_RATE_HZ));
+    setArrayText("5,noise,0,1");
+    setSelectedOutputs([1, 6, 8, 9, 48, 49, 72]);
+    setStatus("Loaded white-noise spectrum rows");
+  }
+
+  function buildGeneratedSignal(
+    kind: Exclude<SignalKind, "wav">,
+    options: {
+      durationMs: number;
+      frequencyHz: number;
+      seed: number;
+      tapTimeMs?: number;
+    },
+  ): Float32Array {
+    if (kind === "sinusoid") {
+      return makeSinusoid({
+        durationMs: options.durationMs,
+        frequencyHz: options.frequencyHz,
+        window: "none",
+      });
+    }
+    if (kind === "noise") {
+      return makeWhiteNoise({ durationMs: options.durationMs, seed: options.seed });
+    }
+    if (kind === "tap") {
+      return makeTap(options.durationMs, options.tapTimeMs ?? 12);
+    }
+    return makeImpulse({ durationMs: options.durationMs });
   }
 
   async function render() {
@@ -373,8 +476,21 @@ function App() {
                 <option value="impulse">Impulse</option>
                 <option value="tap">Tap</option>
                 <option value="noise">White noise</option>
+                <option value="wav">WAV file</option>
               </select>
             </label>
+            {signalKind === "wav" ? (
+              <label title="Import a local mono or multichannel WAV file; it is mixed to mono and resampled to 1300 Hz.">
+                WAV file
+                <input
+                  type="file"
+                  accept=".wav,audio/wav,audio/wave,audio/x-wav"
+                  onChange={(event) => void handleWavFile(event.currentTarget.files?.[0] ?? null)}
+                  title="Import a local mono or multichannel WAV file; it is mixed to mono and resampled to 1300 Hz."
+                />
+                <span className="field-note">{wavStatus}</span>
+              </label>
+            ) : null}
             {signalKind === "sinusoid" ? (
               <label title="Sinusoidal carrier frequency in hertz.">
                 Frequency (Hz)
@@ -403,18 +519,25 @@ function App() {
               </label>
             ) : null}
             <div className="field-grid">
-              <label title="Stimulus duration; the response also includes the impulse-response tail.">
-                Stimulus duration (ms)
-                <input
-                  type="number"
-                  min={30}
-                  max={4000}
-                  step={10}
-                  value={durationMs}
-                  onChange={(event) => setDurationMs(Number(event.target.value))}
-                  title="Stimulus duration; the response also includes the impulse-response tail."
-                />
-              </label>
+              {signalKind !== "wav" ? (
+                <label title="Stimulus duration; the response also includes the impulse-response tail.">
+                  Stimulus duration (ms)
+                  <input
+                    type="number"
+                    min={30}
+                    max={4000}
+                    step={10}
+                    value={durationMs}
+                    onChange={(event) => setDurationMs(Number(event.target.value))}
+                    title="Stimulus duration; the response also includes the impulse-response tail."
+                  />
+                </label>
+              ) : (
+                <label title="Duration is set from the decoded WAV signal.">
+                  WAV duration (ms)
+                  <input type="number" value={durationMs} readOnly />
+                </label>
+              )}
               <label title="Scale the generated input before SkinSource superposition.">
                 Response scale (m/s²)
                 <input
@@ -435,6 +558,40 @@ function App() {
             >
               <Plus size={16} aria-hidden="true" />
               Assign
+            </button>
+          </ControlSection>
+
+          <ControlSection title="Stimulus Array">
+            <div className="preset-row">
+              <button type="button" onClick={() => loadStimulusPreset("taps")} title="Load the multi-digit tap example rows.">
+                Fig. 2E taps
+              </button>
+              <button type="button" onClick={() => loadStimulusPreset("superposition")} title="Load the two-location sinusoid superposition example rows.">
+                Fig. 2F sine
+              </button>
+              <button type="button" onClick={() => loadStimulusPreset("noise")} title="Load the white-noise spectrum example rows.">
+                Noise spectra
+              </button>
+            </div>
+            <label title="Rows use location, signal, value, scale. Signals: sinusoid, tap, impulse, noise.">
+              Rows
+              <textarea
+                value={arrayText}
+                onChange={(event) => setArrayText(event.target.value)}
+                placeholder={"8,sinusoid,200,1\n13,sinusoid,200,1"}
+                spellCheck={false}
+                title="Rows use location, signal, value, scale. Signals: sinusoid, tap, impulse, noise."
+              />
+            </label>
+            <button
+              className="action-button subtle"
+              type="button"
+              onClick={applyStimulusRows}
+              disabled={!ready}
+              title="Assign all stimulus rows, replacing existing rows at the same input locations."
+            >
+              <Plus size={16} aria-hidden="true" />
+              Apply Rows
             </button>
           </ControlSection>
 
@@ -1298,6 +1455,157 @@ function makeTimeMs(samples: number, sampleRateHz: number): Float64Array {
   return Float64Array.from(
     Array.from({ length: samples }, (_, i) => (1000 * i) / sampleRateHz),
   );
+}
+
+interface StimulusRowDefaults {
+  durationMs: number;
+  frequencyHz: number;
+  seed: number;
+  targetAmplitude: number;
+}
+
+interface DecodedWavSignal {
+  signal: Float32Array;
+  originalSampleRate: number;
+}
+
+function parseStimulusRows(
+  text: string,
+  defaults: StimulusRowDefaults,
+): AssignedStimulus[] {
+  const rows = text.split(/\r?\n/);
+  const parsed: AssignedStimulus[] = [];
+  rows.forEach((rawRow, rowIndex) => {
+    const row = rawRow.trim();
+    if (!row || row.startsWith("#")) return;
+    const tokens = row.split(/[,\t ]+/).map((token) => token.trim()).filter(Boolean);
+    const location = Number(tokens[0]);
+    if (!Number.isInteger(location) || location < 1 || location > 20) {
+      throw new Error(`Row ${rowIndex + 1}: input location must be 1-20`);
+    }
+    const kind = normalizeRowSignalKind(tokens[1] ?? "sinusoid");
+    const value = parseOptionalNumber(tokens[2]);
+    const targetAmplitude = parseOptionalNumber(tokens[3]) ?? defaults.targetAmplitude;
+    const seed = parseOptionalNumber(tokens[4]) ?? defaults.seed;
+    const { signal, label } = makeStimulusRowSignal(kind, value, {
+      ...defaults,
+      seed,
+    });
+    parsed.push({
+      id: `row-${rowIndex}-${location}-${Date.now()}`,
+      location,
+      label,
+      signal,
+      targetAmplitude,
+    });
+  });
+  return parsed;
+}
+
+function normalizeRowSignalKind(token: string): Exclude<SignalKind, "wav"> {
+  const kind = token.toLowerCase();
+  if (kind === "sine" || kind === "sin" || kind === "sinusoid") return "sinusoid";
+  if (kind === "white" || kind === "whitenoise" || kind === "noise") return "noise";
+  if (kind === "tap" || kind === "taps") return "tap";
+  if (kind === "impulse" || kind === "imp") return "impulse";
+  throw new Error(`Unknown stimulus signal "${token}"`);
+}
+
+function makeStimulusRowSignal(
+  kind: Exclude<SignalKind, "wav">,
+  value: number | null,
+  defaults: StimulusRowDefaults,
+): { signal: Float32Array; label: string } {
+  if (kind === "sinusoid") {
+    const frequencyHz = value ?? defaults.frequencyHz;
+    return {
+      signal: makeSinusoid({
+        durationMs: defaults.durationMs,
+        frequencyHz,
+        window: "none",
+      }),
+      label: `${frequencyHz} Hz sine`,
+    };
+  }
+  if (kind === "noise") {
+    const rowSeed = Math.round(value ?? defaults.seed);
+    return {
+      signal: makeWhiteNoise({ durationMs: defaults.durationMs, seed: rowSeed }),
+      label: `white noise seed ${rowSeed}`,
+    };
+  }
+  if (kind === "tap") {
+    const tapTimeMs = value ?? 12;
+    return {
+      signal: makeTap(defaults.durationMs, tapTimeMs),
+      label: `${tapTimeMs} ms tap`,
+    };
+  }
+  const sampleIndex = Math.max(0, Math.round(value ?? 14));
+  return {
+    signal: makeImpulse({ durationMs: defaults.durationMs, sampleIndex }),
+    label: `impulse sample ${sampleIndex + 1}`,
+  };
+}
+
+function parseOptionalNumber(value: string | undefined): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`Invalid number "${value}"`);
+  return parsed;
+}
+
+async function decodeWavFile(file: File): Promise<DecodedWavSignal> {
+  const AudioContextConstructor =
+    window.AudioContext ??
+    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) {
+    throw new Error("This browser does not expose Web Audio WAV decoding");
+  }
+  const context = new AudioContextConstructor();
+  try {
+    const decoded = await context.decodeAudioData(await file.arrayBuffer());
+    const mono = mixToMono(decoded);
+    const signal =
+      decoded.sampleRate === SAMPLE_RATE_HZ
+        ? mono
+        : await resampleWithWebAudio(mono, decoded.sampleRate, SAMPLE_RATE_HZ);
+    normalizePeak(signal);
+    return {
+      signal,
+      originalSampleRate: decoded.sampleRate,
+    };
+  } finally {
+    await context.close().catch(() => undefined);
+  }
+}
+
+function mixToMono(buffer: AudioBuffer): Float32Array {
+  const mono = new Float32Array(buffer.length);
+  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    const data = buffer.getChannelData(channel);
+    for (let sample = 0; sample < buffer.length; sample += 1) {
+      mono[sample] += data[sample] / buffer.numberOfChannels;
+    }
+  }
+  return mono;
+}
+
+async function resampleWithWebAudio(
+  signal: Float32Array,
+  sourceRateHz: number,
+  targetRateHz: number,
+): Promise<Float32Array> {
+  const targetSamples = Math.max(1, Math.round((signal.length * targetRateHz) / sourceRateHz));
+  const offline = new OfflineAudioContext(1, targetSamples, targetRateHz);
+  const buffer = offline.createBuffer(1, signal.length, sourceRateHz);
+  buffer.copyToChannel(new Float32Array(signal), 0);
+  const source = offline.createBufferSource();
+  source.buffer = buffer;
+  source.connect(offline.destination);
+  source.start();
+  const rendered = await offline.startRendering();
+  return new Float32Array(rendered.getChannelData(0));
 }
 
 const rootElement = document.getElementById("root")!;

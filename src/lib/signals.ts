@@ -1,6 +1,6 @@
 import { SAMPLE_RATE_HZ } from "./constants";
 
-export type SignalKind = "sinusoid" | "impulse" | "tap" | "noise";
+export type SignalKind = "sinusoid" | "impulse" | "tap" | "noise" | "wav";
 export type WindowKind = "none" | "hanning" | "tukey";
 
 export interface SinusoidParams {

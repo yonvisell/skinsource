@@ -128,6 +128,51 @@ Browser inspection:
 - Current 5174 browser logs had no warnings/errors.
 - UI note for cleanup: adjacent selected output labels can crowd each other when nearby dorsal points are selected.
 
+### Stimulus Array And WAV Import Slice
+
+- Added `WAV file` as a stimulus signal mode.
+- WAV import behavior:
+  - uses browser Web Audio `decodeAudioData`
+  - mixes multichannel audio to mono
+  - resamples to the SkinSource sample rate, `1300 Hz`, via `OfflineAudioContext` when needed
+  - normalizes imported samples to peak amplitude before the existing SkinSource response-scaling step
+- Added a compact `Stimulus Array` panel:
+  - row format: `location,signal,value,scale`
+  - supported row signals: `sinusoid`, `tap`, `impulse`, `noise`
+  - rows can be comma, tab, or space separated
+  - blank rows and `#` comments are ignored
+- Added presets based on upstream examples:
+  - `Fig. 2E taps`
+  - `Fig. 2F sine`
+  - `Noise spectra`
+- Presets can also update model, displayed quantity, duration, and selected output arrays to match the example workflow.
+
+Commands:
+
+```bash
+npm run test
+npm run build
+```
+
+Results:
+
+- Vitest passed: 3 files, 7 tests.
+- Production build passed.
+
+Browser inspection:
+
+- Reloaded `http://127.0.0.1:5174/`.
+- Loaded the `Fig. 2F sine` preset.
+- Applied rows and verified assigned inputs at locations 8 and 13, both labeled `200 Hz sine`.
+- Rendered successfully: `Rendered 2 inputs: 586 samples, Raw x acceleration`.
+- Verified selected outputs `19`, `21`, `24`, and `32` were active.
+- Current 5174 browser logs had no warnings/errors.
+
+WAV verification note:
+
+- Created a tiny local synthetic WAV under `tmp/` for testing and did not commit it.
+- The embedded browser automation surface does not expose file upload, and its page-evaluation sandbox lacks enough binary/browser constructors to synthesize a file-input event reliably. The WAV import code is type/build verified, and it uses standard browser APIs, but a manual file-picker verification is still pending for the final visual QA pass.
+
 ## 2026-07-09
 
 ### Planning Inputs
