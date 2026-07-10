@@ -109,7 +109,7 @@ function App() {
   const [preload, setPreload] = useState({ loaded: 0, total: 80 });
   const [model, setModel] = useState(1);
   const [inputLocation, setInputLocation] = useState(7);
-  const [selectedOutput, setSelectedOutput] = useState(20);
+  const [selectedOutputs, setSelectedOutputs] = useState<number[]>([20]);
   const [signalKind, setSignalKind] = useState<SignalKind>("sinusoid");
   const [durationMs, setDurationMs] = useState(250);
   const [frequencyHz, setFrequencyHz] = useState(100);
@@ -186,15 +186,38 @@ function App() {
     };
   }, [appData, model]);
 
-  const trace = useMemo(() => {
+  const selectedOutput = selectedOutputs[selectedOutputs.length - 1] ?? 20;
+  const selectedTraces = useMemo(() => {
     if (!projected) return null;
-    return traceAtOutput(projected, selectedOutput - 1);
-  }, [projected, selectedOutput]);
+    return selectedOutputs.map((output) => ({
+      output,
+      trace: traceAtOutput(projected, output - 1),
+    }));
+  }, [projected, selectedOutputs]);
 
-  const spectrum = useMemo<Spectrum | null>(() => {
-    if (!trace || !projected) return null;
-    return oneSidedMagnitudeSpectrum(trace, projected.sampleRateHz);
-  }, [trace, projected]);
+  const trace = selectedTraces?.find((entry) => entry.output === selectedOutput)?.trace ?? null;
+
+  const selectedSpectra = useMemo(() => {
+    if (!selectedTraces || !projected) return null;
+    return selectedTraces.map(({ output, trace: selectedTrace }) => ({
+      output,
+      spectrum: oneSidedMagnitudeSpectrum(selectedTrace, projected.sampleRateHz),
+    }));
+  }, [selectedTraces, projected]);
+
+  const spectrum =
+    selectedSpectra?.find((entry) => entry.output === selectedOutput)?.spectrum ?? null;
+
+  function selectOutput(location: number, additive: boolean) {
+    setSelectedOutputs((current) => {
+      if (!additive) return [location];
+      if (current.includes(location)) {
+        const next = current.filter((item) => item !== location);
+        return next.length === 0 ? [location] : next;
+      }
+      return [...current, location];
+    });
+  }
 
   function buildSignal(): Float32Array {
     if (signalKind === "sinusoid") {
@@ -480,8 +503,8 @@ function App() {
               surfaceMode={surfaceMode}
               onSurfaceModeChange={setSurfaceMode}
               values={rmsDb}
-              selected={selectedOutput}
-              onSelect={setSelectedOutput}
+              selected={selectedOutputs}
+              onSelect={selectOutput}
             />
           </div>
 
@@ -494,13 +517,17 @@ function App() {
 
           <div className="view-pane">
             {tab === "surface" ? (
-              <SurfaceReadout selectedOutput={selectedOutput} rmsDb={rmsDb} />
+              <SurfaceReadout selectedOutputs={selectedOutputs} rmsDb={rmsDb} />
             ) : null}
             {tab === "time" ? (
-              <TraceView projected={projected} trace={trace} selectedOutput={selectedOutput} />
+              <TraceView
+                projected={projected}
+                traces={selectedTraces}
+                selectedOutputs={selectedOutputs}
+              />
             ) : null}
             {tab === "frequency" ? (
-              <SpectrumView spectrum={spectrum} selectedOutput={selectedOutput} />
+              <SpectrumView spectra={selectedSpectra} selectedOutputs={selectedOutputs} />
             ) : null}
             {tab === "export" ? (
               <ExportView
@@ -509,6 +536,7 @@ function App() {
                 rmsDb={rmsDb}
                 spectrum={spectrum}
                 selectedOutput={selectedOutput}
+                selectedOutputs={selectedOutputs}
                 model={model}
                 colorMap={appData?.colorMap ?? null}
                 projection={projection}
@@ -662,8 +690,8 @@ function OutputMap({
   surfaceMode: SurfaceMode;
   onSurfaceModeChange: (mode: SurfaceMode) => void;
   values: Float32Array | null;
-  selected: number;
-  onSelect: (location: number) => void;
+  selected: number[];
+  onSelect: (location: number, additive: boolean) => void;
 }) {
   const vertices = (geometry?.surfaceVertices ?? []).map(([x, y]) => [
     x * modelScale,
@@ -711,7 +739,10 @@ function OutputMap({
         </div>
       </header>
       {bounds && colorMap ? (
-        <div className="surface-stage">
+        <div
+          className="surface-stage"
+          title="Click an output point to select it. Shift, Option, or Command-click to add or remove outputs."
+        >
           <svg viewBox={`${bounds.minX - 20} ${bounds.minY - 20} ${bounds.width + 40} ${bounds.height + 40}`}>
             {interpolatedImageUrl && interpolationAsset ? (
               <image
@@ -733,21 +764,24 @@ function OutputMap({
             {validOutputs.map(({ point, id }) => {
               const [x, y] = point as [number, number];
               const value = values?.[id - 1] ?? -42;
+              const isSelected = selected.includes(id);
               return (
                 <g
                   key={id}
-                  onClick={() => onSelect(id)}
+                  onClick={(event) =>
+                    onSelect(id, event.shiftKey || event.altKey || event.metaKey)
+                  }
                   className="map-point-button"
                   aria-label={`Output location ${id}`}
                 >
                   <circle
                     cx={x}
                     cy={y}
-                    r={id === selected ? 9 : 6.5}
+                    r={isSelected ? 9 : 6.5}
                     fill={colorForDb(value, colorMap)}
-                    className={id === selected ? "output-point selected" : "output-point"}
+                    className={isSelected ? "output-point selected" : "output-point"}
                   />
-                  {id === selected ? (
+                  {isSelected ? (
                     <text className="output-label" x={x + 10} y={y + 4}>
                       {id}
                     </text>
@@ -807,17 +841,21 @@ function interpolatedSurfaceImageUrl(
 }
 
 function SurfaceReadout({
-  selectedOutput,
+  selectedOutputs,
   rmsDb,
 }: {
-  selectedOutput: number;
+  selectedOutputs: number[];
   rmsDb: Float32Array | null;
 }) {
-  const value = rmsDb?.[selectedOutput - 1];
+  const primaryOutput = selectedOutputs[selectedOutputs.length - 1] ?? 20;
+  const value = rmsDb?.[primaryOutput - 1];
+  const selectionLabel = selectedOutputs.length <= 4
+    ? selectedOutputs.join(", ")
+    : `${selectedOutputs.slice(0, 4).join(", ")} +${selectedOutputs.length - 4}`;
   return (
     <section className="readout-grid">
-      <Metric label="Selected Output" value={`${selectedOutput}`} />
-      <Metric label="RMS Level" value={value == null ? "not rendered" : `${value.toFixed(1)} dB`} />
+      <Metric label="Selected Outputs" value={selectionLabel} />
+      <Metric label="Primary RMS Level" value={value == null ? "not rendered" : `${value.toFixed(1)} dB`} />
       <Metric label="Dorsal Points" value={`${OUTPUT_LOCATIONS - 6} mapped`} />
       <Metric label="Volar Points" value="6 trace-only" />
     </section>
@@ -826,48 +864,73 @@ function SurfaceReadout({
 
 function TraceView({
   projected,
-  trace,
-  selectedOutput,
+  traces,
+  selectedOutputs,
 }: {
   projected: ProjectedVibrations | null;
-  trace: Float32Array | null;
-  selectedOutput: number;
+  traces: Array<{ output: number; trace: Float32Array }> | null;
+  selectedOutputs: number[];
 }) {
-  if (!projected || !trace) {
+  if (!projected || !traces || traces.length === 0) {
     return <EmptyView title="No trace yet" detail="Render a response to inspect selected output traces." />;
   }
-  const timeMs = Float64Array.from(
-    Array.from({ length: trace.length }, (_, i) => (1000 * i) / projected.sampleRateHz),
-  );
+  const timeMs = makeTimeMs(projected.samples, projected.sampleRateHz);
+  const equation = displayedQuantityEquation(projected.mode as ProjectionMode);
   return (
-    <Chart
-      title={`Output ${selectedOutput} · ${projected.mode}`}
-      seriesLabel="m/s²"
-      xLabel="ms"
-      x={timeMs}
-      y={trace}
-    />
+    <section className="analysis-stack">
+      <div className="equation-strip">
+        <span>{displayedQuantityLabel(projected.mode as ProjectionMode)}</span>
+        <code>{equation.expression}</code>
+        <small>{equation.note}</small>
+      </div>
+      <div className={traces.length === 1 ? "small-multiple-grid single" : "small-multiple-grid"}>
+        {traces.map(({ output, trace }) => (
+          <Chart
+            key={output}
+            title={`Output ${output}`}
+            seriesLabel="m/s²"
+            xLabel="ms"
+            x={timeMs}
+            y={trace}
+            height={selectedOutputs.length === 1 ? 260 : 170}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
 function SpectrumView({
-  spectrum,
-  selectedOutput,
+  spectra,
+  selectedOutputs,
 }: {
-  spectrum: Spectrum | null;
-  selectedOutput: number;
+  spectra: Array<{ output: number; spectrum: Spectrum }> | null;
+  selectedOutputs: number[];
 }) {
-  if (!spectrum) {
+  if (!spectra || spectra.length === 0) {
     return <EmptyView title="No spectrum yet" detail="Render a response to inspect frequency magnitudes." />;
   }
   return (
-    <Chart
-      title={`Output ${selectedOutput} · ${spectrum.fftLength}-point FFT`}
-      seriesLabel="magnitude"
-      xLabel="Hz"
-      x={spectrum.frequenciesHz}
-      y={spectrum.magnitudes}
-    />
+    <section className="analysis-stack">
+      <div className="view-note">
+        {selectedOutputs.length === 1
+          ? "One-sided magnitude spectrum for the selected output."
+          : "One-sided magnitude spectra for selected outputs."}
+      </div>
+      <div className={spectra.length === 1 ? "small-multiple-grid single" : "small-multiple-grid"}>
+        {spectra.map(({ output, spectrum }) => (
+          <Chart
+            key={output}
+            title={`Output ${output} · ${spectrum.fftLength}-point FFT`}
+            seriesLabel="magnitude"
+            xLabel="Hz"
+            x={spectrum.frequenciesHz}
+            y={spectrum.magnitudes}
+            height={selectedOutputs.length === 1 ? 260 : 170}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -877,6 +940,7 @@ function ExportView({
   rmsDb,
   spectrum,
   selectedOutput,
+  selectedOutputs,
   model,
   colorMap,
   projection,
@@ -887,6 +951,7 @@ function ExportView({
   rmsDb: Float32Array | null;
   spectrum: Spectrum | null;
   selectedOutput: number;
+  selectedOutputs: number[];
   model: number;
   colorMap: MatlabColormap | null;
   projection: ProjectionMode;
@@ -952,6 +1017,7 @@ function ExportView({
                 displayedQuantity: projection,
                 displayedQuantityLabel: displayedQuantityLabel(projection),
                 selectedOutput,
+                selectedOutputs,
                 sampleRateHz: projected.sampleRateHz,
                 samples: projected.samples,
                 stimuli: stimuli.map((stimulus) => ({
@@ -1016,12 +1082,14 @@ function Chart({
   xLabel,
   x,
   y,
+  height = 280,
 }: {
   title: string;
   seriesLabel: string;
   xLabel: string;
   x: Float32Array | Float64Array;
   y: Float32Array | Float64Array;
+  height?: number;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -1029,7 +1097,7 @@ function Chart({
     const chart = new uPlot(
       {
         width: hostRef.current.clientWidth || 720,
-        height: 280,
+        height,
         title,
         scales: { x: { time: false } },
         axes: [
@@ -1048,13 +1116,13 @@ function Chart({
       [Array.from(x), Array.from(y)],
       hostRef.current,
     );
-    const resize = () => chart.setSize({ width: hostRef.current?.clientWidth || 720, height: 280 });
+    const resize = () => chart.setSize({ width: hostRef.current?.clientWidth || 720, height });
     window.addEventListener("resize", resize);
     return () => {
       window.removeEventListener("resize", resize);
       chart.destroy();
     };
-  }, [title, seriesLabel, xLabel, x, y]);
+  }, [title, seriesLabel, xLabel, x, y, height]);
   return <div className="chart-host" ref={hostRef} />;
 }
 
@@ -1193,6 +1261,43 @@ function surfaceSvgMarkup(
 
 function displayedQuantityLabel(mode: ProjectionMode): string {
   return DISPLAYED_QUANTITIES.find((quantity) => quantity.value === mode)?.label ?? mode;
+}
+
+function displayedQuantityEquation(mode: ProjectionMode): { expression: string; note: string } {
+  if (mode === "x") {
+    return {
+      expression: "q(x,t) = u_x(x,t)",
+      note: "Raw local accelerometer x-axis response.",
+    };
+  }
+  if (mode === "y") {
+    return {
+      expression: "q(x,t) = u_y(x,t)",
+      note: "Raw local accelerometer y-axis response.",
+    };
+  }
+  if (mode === "z") {
+    return {
+      expression: "q(x,t) = u_z(x,t)",
+      note: "Skin-normal accelerometer-axis response.",
+    };
+  }
+  if (mode === "rms") {
+    return {
+      expression: "q(x,t) = u(x,t) dot e_rms(x)",
+      note: "e_rms is the per-output unit axis from RMS energy across x, y, and z.",
+    };
+  }
+  return {
+    expression: "q(x,t) = sqrt(u_x(x,t)^2 + u_y(x,t)^2 + u_z(x,t)^2)",
+    note: "Vector magnitude of the three accelerometer axes.",
+  };
+}
+
+function makeTimeMs(samples: number, sampleRateHz: number): Float64Array {
+  return Float64Array.from(
+    Array.from({ length: samples }, (_, i) => (1000 * i) / sampleRateHz),
+  );
 }
 
 const rootElement = document.getElementById("root")!;

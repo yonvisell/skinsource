@@ -480,7 +480,7 @@ input:focus {
 .view-pane {
   min-height: 220px;
   padding: 12px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .readout-grid {
@@ -513,6 +513,54 @@ input:focus {
 .chart-host {
   width: 100%;
   min-height: 280px;
+}
+
+.analysis-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.equation-strip,
+.view-note {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: rgba(0, 0, 0, 0.18);
+  color: #aeb8c5;
+  font-size: 12px;
+}
+
+.equation-strip span {
+  color: #f0f4f8;
+  font-weight: 700;
+}
+
+.equation-strip code {
+  color: #bfe6df;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  white-space: normal;
+}
+
+.equation-strip small {
+  color: #8d99a8;
+  font-size: 11px;
+}
+
+.small-multiple-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.small-multiple-grid.single {
+  grid-template-columns: 1fr;
+}
+
+.small-multiple-grid .chart-host {
+  min-height: 170px;
 }
 
 .chart-host .uplot {

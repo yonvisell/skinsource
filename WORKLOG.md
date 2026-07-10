@@ -94,6 +94,40 @@ Browser inspection:
 - Visual check: interpolated fill aligns with dorsal sensor locations and the high-response region appears near the expected hand/finger region.
 - Current 5174 browser logs had no warnings/errors.
 
+### Multi-Output And Equation Slice
+
+- Replaced single selected output state with ordered multi-output selection.
+- Output-map behavior:
+  - normal click selects one output
+  - Shift, Option, or Command-click toggles additional outputs
+  - selected outputs remain highlighted and labeled on the surface map
+- Added stacked small-multiple charts for selected outputs in both time-domain and frequency views.
+- Renamed the time view to `Time domain` and added a displayed-quantity equation strip above the time-domain plots.
+- Session JSON export now records both the primary output and the selected output array.
+
+Commands:
+
+```bash
+npm run test
+npm run build
+```
+
+Results:
+
+- Vitest passed: 3 files, 7 tests.
+- Production build passed.
+
+Browser inspection:
+
+- Reloaded `http://127.0.0.1:5174/`.
+- Rendered the default 100 Hz sinusoid at input 7.
+- Shift-clicked outputs 21 and 22 in addition to the default output 20.
+- Verified output labels `20`, `21`, and `22` are visible.
+- Verified `Time domain` displays three stacked charts plus the equation for vector magnitude.
+- Verified `Frequency` displays three stacked one-sided magnitude spectra.
+- Current 5174 browser logs had no warnings/errors.
+- UI note for cleanup: adjacent selected output labels can crowd each other when nearby dorsal points are selected.
+
 ## 2026-07-09
 
 ### Planning Inputs
