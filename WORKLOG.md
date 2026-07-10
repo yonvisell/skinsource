@@ -156,3 +156,45 @@ Results:
 
 - Vitest passed: 3 files, 7 tests.
 - Production build passed.
+
+### Workbench UI
+
+Implemented the first usable browser workbench:
+
+- manifest and visualization geometry loading
+- concurrent background preloading of converted impulse-response chunks
+- model selector
+- projection selector
+- input-location selector and interactive input map
+- signal builder for sinusoid, impulse, tap, and white noise
+- assigned-input list with remove controls
+- render workflow using the TypeScript compute core
+- dorsal output sensor map with RMS color coding
+- selected-output readout
+- trace and spectrum tabs using `uplot`
+- export tab placeholder for the next slice
+
+Commands:
+
+```bash
+npm run test
+npm run build
+npm run dev
+```
+
+Browser inspection:
+
+- Opened `http://127.0.0.1:5173/` in the in-app browser.
+- Verified dataset preload reached `80/80`.
+- Assigned default 100 Hz sinusoid at input location 7.
+- Rendered one input successfully: `846` samples with `mag` projection.
+- Verified RMS surface map updated.
+- Verified trace tab rendered one chart for output 20.
+- Verified spectrum tab rendered one chart using a `1024` point FFT.
+- Browser console check returned no warnings or errors.
+
+Visual notes:
+
+- Layout is compact and dark as intended.
+- Render button is low in the left rail at the default 1280x720 viewport but remains reachable; revisit after export controls land.
+- Sensor-map visualization is currently point-based rather than interpolated surface fill.

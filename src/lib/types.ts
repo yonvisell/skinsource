@@ -53,6 +53,12 @@ export interface SkinSourceManifest {
   citation: string;
 }
 
+export interface VisualizationGeometry {
+  inputLocations: Array<[number, number]>;
+  outputLocations: Array<[number | null, number | null]>;
+  surfaceVertices: Array<[number, number]>;
+}
+
 export interface ImpulseChunk {
   key: string;
   model: number;

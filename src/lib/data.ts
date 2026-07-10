@@ -2,6 +2,7 @@ import type {
   ImpulseChunk,
   ManifestChunk,
   SkinSourceManifest,
+  VisualizationGeometry,
 } from "./types";
 
 const BASE_URL = import.meta.env.BASE_URL;
@@ -16,6 +17,16 @@ export async function loadManifest(): Promise<SkinSourceManifest> {
     throw new Error(`Failed to load manifest: ${response.status}`);
   }
   return (await response.json()) as SkinSourceManifest;
+}
+
+export async function loadVisualizationGeometry(
+  manifest: SkinSourceManifest,
+): Promise<VisualizationGeometry> {
+  const response = await fetch(assetUrl(`data/${manifest.visualization.path}`));
+  if (!response.ok) {
+    throw new Error(`Failed to load visualization geometry: ${response.status}`);
+  }
+  return (await response.json()) as VisualizationGeometry;
 }
 
 export function findChunk(
@@ -73,15 +84,29 @@ export class ChunkStore {
     return promise;
   }
 
-  async preloadAll(onProgress?: (loaded: number, total: number) => void) {
+  async preloadAll(
+    onProgress?: (loaded: number, total: number) => void,
+    concurrency = 6,
+  ) {
     const total = this.manifest.chunks.length;
     let loaded = 0;
-    const promises = this.manifest.chunks.map(async (chunk) => {
-      const result = await this.load(chunk.model, chunk.location);
-      loaded += 1;
-      onProgress?.(loaded, total);
-      return result;
-    });
-    return Promise.all(promises);
+    const results: ImpulseChunk[] = [];
+    let index = 0;
+
+    const worker = async () => {
+      while (index < this.manifest.chunks.length) {
+        const chunk = this.manifest.chunks[index];
+        index += 1;
+        const result = await this.load(chunk.model, chunk.location);
+        results.push(result);
+        loaded += 1;
+        onProgress?.(loaded, total);
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, total) }, () => worker()),
+    );
+    return results;
   }
 }
