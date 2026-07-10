@@ -4,7 +4,7 @@
 
 SkinSource is a static browser application for exploring SkinSource impulse-response data without MATLAB at runtime. It ports and extends the practical workflow of the SkinSource MATLAB toolbox into a compact, dark, responsive workbench suitable for GitHub Pages.
 
-The application lets users choose an upper-limb model, assign stimulus signals to one or more hand input locations, render predicted skin acceleration responses, inspect surface maps/traces/spectra, and export local analysis artifacts.
+The application lets users choose an upper-limb recording, assign stimulus signals to one or more hand input locations, render predicted skin acceleration responses, inspect surface maps, time-domain signals, and frequency spectra, and export local analysis artifacts.
 
 ## Source Contract
 
@@ -88,31 +88,32 @@ The UI should be dark, modern, compact, and fast. It should feel closer to a foc
 
 Expected controls:
 
-- upper-limb model selector
+- upper-limb recording selector
 - input-location map with contact-type cues
 - signal builder with reusable assigned inputs
 - render/status controls
 - displayed-quantity selector
 - output-location selection
-- export controls
+- export/download controls in the main control rail
 
-Possible analysis views:
+Primary analysis views:
 
 - Surface: RMS or selected-time response over the upper limb, with sensor and interpolated modes
-- Time domain: selected output-location traces, including multi-output small multiples
+- Time domain: selected output-location signals, including multi-output small multiples
 - Frequency domain: selected output-location spectra
 - Inputs: assigned stimulus previews
-- Export: data, images, and possibly video/GIF
+- Downloads: data, images, and short video from the rendered response
 
-Tabbed layout is allowed if it improves flow. The first implementation should keep persistent context controls and avoid burying core workflow.
+The main surface, time-domain, and frequency-domain views should remain simultaneously visible when practical. The first implementation keeps persistent context controls and avoids burying core workflow.
 
 ## Exports
 
 Initial export targets:
 
 - rendered response data as JSON or CSV
-- selected traces/spectra as CSV
-- surface/traces/spectrum images as PNG
+- selected time-domain signals and spectra as CSV
+- selected output time-domain signal as WAV
+- surface/time-domain/spectrum images as PNG where implemented
 - project/session settings as JSON
 - short surface playback as WebM video where supported
 - animated GIF for short/compact exports if practical

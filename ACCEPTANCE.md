@@ -32,7 +32,7 @@
 - Sum-of-components is not exposed as a displayed quantity.
 - One-sided frequency spectra follow documented normalization and FFT-length rules; if zero-padded browser spectra are used, MATLAB validation uses the same padded length.
 - Numerical comparisons against MATLAB reference outputs pass within documented tolerance for representative examples.
-- Stimulus arrays can be specified more efficiently than one-by-one UI assignment, either through a table, presets, import, or equivalent compact workflow.
+- Multiple input stimuli can be specified more efficiently than one-by-one UI assignment, either through compact rows, presets, import, or equivalent workflow.
 
 ## UI
 
@@ -41,8 +41,8 @@
 - UI is dark, compact, responsive, and data-workflow oriented.
 - No `alert()`, `confirm()`, or modal confirmation flows.
 - App title is `SkinSource`.
-- UI uses clear labels such as `Upper-limb model` and `Displayed quantity`.
-- Small unobtrusive citation and links to DOI/GitHub/Zenodo are present.
+- UI uses clear labels such as `Upper-limb recording`, `Displayed quantity`, `Multiple-input rows`, and `Stimuli to render`.
+- Citation and links to the paper DOI and original GitHub repository are visible and styled as links.
 - Buttons, font sizes, spacing, and labels are consistent and compact.
 - Mouseover hints are available for key controls.
 - Core workflow is available:
@@ -50,19 +50,19 @@
   - choose/input one or more stimulus locations
   - configure signal
   - render output
-  - inspect surface response, time-domain traces, and frequency-domain spectra
+  - inspect surface response, time-domain signals, and frequency-domain spectra
   - export at least one data format and one image format
 
 ## Visualization
 
 - Surface view shows upper-limb response with both sensor-map and interpolated-surface modes.
-- Surface view has a compact colorbar using the MATLAB colormap and numeric scale labels.
-- Input-location view shows the hand outline.
+- Surface view has a compact colorbar using the MATLAB colormap, selectable dB range controls, and `Normalized RMS acceleration` labeling.
+- Input-location view shows an undistorted hand outline/location image aligned to the selection overlay.
 - Output locations can be selected directly; multiple output locations can be selected.
 - Selected output locations drive time-domain traces.
 - Selected output locations drive frequency-domain spectra.
-- Time-domain view displays the equation for the selected displayed quantity.
-- Multi-output time-domain traces can be shown as stacked small multiples.
+- Time-domain labels expose the selected displayed quantity equation without a separate explanatory subpanel.
+- Multi-output time-domain signals can be shown as stacked small multiples.
 - Visual orientation, labels, color scaling, and selected-point behavior are verified against MATLAB or upstream reference assets.
 
 ## Verification

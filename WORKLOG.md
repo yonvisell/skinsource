@@ -539,3 +539,71 @@ Remaining issues:
 - Surface visualization is a point map, not MATLAB natural-neighbor interpolation.
 - Runtime spectra use next-power-of-two padded FFTs; this is documented and should be validated with the same MATLAB convention when spectrum parity tests are expanded.
 - Custom `.wav` import and video/GIF export are not yet implemented.
+
+## 2026-07-10 Revision Pass: UI Corrections, WAV Portability, Downloads Rail
+
+Implemented a follow-up UI and functionality revision based on visual inspection notes.
+
+Changes:
+
+- Replaced the previous generated input-location outline with the user-provided `stimulation_small.png`, served as `public/assets/stimulation-locations.png`.
+- Added static image-coordinate overlays for input-location selection; a browser check measured the displayed image ratio as `0.635`, matching the asset ratio `635/1000`.
+- Added the user-provided dorsal hand sensor image as `public/assets/hand-sensors-inset.jpg`.
+- Made the sensor inset smaller, frameless, and shifted right within the surface panel.
+- Moved downloads/export controls into the left control rail.
+- Renamed UI sections and labels:
+  - `Input signal`
+  - `Upper-limb recording`
+  - `Multiple-input rows`
+  - `Stimuli to render`
+  - `Downloads`
+- Changed upper-limb dropdown options to `Limb N · male/female` and removed unexplained hand-length text from the UI.
+- Added selectable surface color-scale controls:
+  - `Surface scale floor`
+  - `Surface scale ceiling`
+- Changed the surface colorbar title to `Normalized RMS acceleration` and simplified labels to the selected dB endpoints.
+- Propagated the selected dB range through sensor colors, interpolated surface colors, Surface PNG export, and Surface WebM frames.
+- Reworked the panel density, button sizes, slider weight, border contrast, and link styling.
+- Replaced `Dataset ready` UI wording with `SkinSource data ready`.
+- Kept paper/GitHub links visible and styled as standard underlined links.
+
+WAV import portability:
+
+- Browser QA found that Chrome rejects `OfflineAudioContext(1, n, 1300)` because 1300 Hz is below the allowed browser sample-rate range.
+- Replaced the Web Audio offline resampling path with a deterministic browser-side windowed-sinc resampler to 1300 Hz.
+- Confirmed the test WAV `test-assets/skinsourcesim_100hz_1s_48khz.wav` imports as `1300 samples at 1300 Hz, resampled from 48000 Hz`.
+
+Commands:
+
+```bash
+npm run test
+npm run build
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --headless=new --disable-gpu --window-size=1440,960 --screenshot=tmp/skinsourcesim-ui-user-comments-pass.png 'http://127.0.0.1:5173/?v=user-comments-pass'
+```
+
+Browser automation and visual checks:
+
+- Captured default desktop UI: `tmp/skinsourcesim-ui-user-comments-pass.png`.
+- Rendered the default 100 Hz sinusoid at input location 7 and captured `tmp/skinsourcesim-rendered-left-downloads.png`.
+- Verified after render:
+  - `Downloads` section opens automatically.
+  - `Time-domain WAV` export button is visible.
+  - colorbar title reads `Normalized RMS acceleration`.
+  - color-scale controls are present.
+  - input image displayed ratio is `0.635`.
+  - sensor inset is smaller and frameless.
+- Confirmed Surface PNG download via headless Chrome:
+  - `tmp/downloads/skinsourcesim-model1-surface.png`
+  - dimensions `1200 x 1600`
+  - black background, compact dB colorbar, no selected-output highlight.
+- Captured mobile layouts and inspected computed layout width; document scroll width matched viewport width at `390 px`.
+
+Verification results:
+
+- Vitest passed: 3 files, 10 tests.
+- Production build passed.
+
+Remaining notes:
+
+- Chrome headless screenshots at very tall artificial mobile viewports can stretch auto grid rows; computed layout checks showed no horizontal overflow.
+- The user-provided `new/` intake folder is intentionally left untracked; deployable copies live under `public/assets/`.
