@@ -202,6 +202,41 @@ Browser inspection:
 - Clicked `Surface WebM`; browser status reported `Downloaded skinsourcesim-model1-surface.webm`.
 - Current 5174 browser logs had no warnings/errors.
 
+### Expanded MATLAB Validation Slice
+
+- Added `scripts/generate_matlab_validation_fixtures.m`.
+- Generated compact MATLAB fixtures for:
+  - `sine_m1_l7_z`: selected z-axis traces
+  - `sine_m1_l7_mag`: selected vector-magnitude traces
+  - `sine_m1_l7_rms`: selected RMS-energy-axis traces
+  - `superposition_m3_l8_l13_x`: two-input raw x traces
+  - `taps_m3_l7_l8_l9_l10_mag`: multi-location tap magnitude traces
+  - `noise_m2_l5_x_spectra`: deterministic-noise one-sided spectra
+  - `sine_m1_l7_mag_interpolated_surface`: direct MATLAB natural-neighbor surface interpolation
+- Expanded `src/lib/skinsource.test.ts` to compare:
+  - full rendered response for the original sine case
+  - selected time-domain traces across several signals, locations, and displayed quantities
+  - frequency-domain spectra and frequency bins
+  - browser sparse interpolation output against direct MATLAB `surfaceinterpolation`
+
+Commands:
+
+```bash
+/Applications/MATLAB_R2026a.app/bin/matlab -batch "run('scripts/generate_matlab_validation_fixtures.m')"
+npm run build
+npm run test
+```
+
+Results:
+
+- MATLAB wrote 7 validation cases.
+- Production build passed.
+- Vitest passed: 3 files, 10 tests.
+
+Implementation note:
+
+- MATLAB fixture generation uses the explicit browser Hanning-window formula for tap fixtures, avoiding a mismatch with MATLAB `hanning()` defaults.
+
 ## 2026-07-09
 
 ### Planning Inputs

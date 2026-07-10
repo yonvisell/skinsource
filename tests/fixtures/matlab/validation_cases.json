@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-10T01:04:15-07:00",
+  "sampleRateHz": 1300,
+  "cases": [
+    {
+      "id": "sine_m1_l7_z",
+      "kind": "traces",
+      "fixture": "model1_location7_sine100_100ms_z_outputs.f32",
+      "model": 1,
+      "locations": 7,
+      "signal": "sinusoid",
+      "frequencyHz": 100,
+      "durationMs": 100,
+      "targetAmplitude": 1,
+      "displayedQuantity": "z",
+      "selectedOutputs": [
+        20,
+        24,
+        32
+      ],
+      "shape": [
+        651,
+        3
+      ]
+    },
+    {
+      "id": "sine_m1_l7_mag",
+      "kind": "traces",
+      "fixture": "model1_location7_sine100_100ms_mag_outputs.f32",
+      "model": 1,
+      "locations": 7,
+      "signal": "sinusoid",
+      "frequencyHz": 100,
+      "durationMs": 100,
+      "targetAmplitude": 1,
+      "displayedQuantity": "mag",
+      "selectedOutputs": [
+        20,
+        24,
+        32
+      ],
+      "shape": [
+        651,
+        3
+      ]
+    },
+    {
+      "id": "sine_m1_l7_rms",
+      "kind": "traces",
+      "fixture": "model1_location7_sine100_100ms_rms_outputs.f32",
+      "model": 1,
+      "locations": 7,
+      "signal": "sinusoid",
+      "frequencyHz": 100,
+      "durationMs": 100,
+      "targetAmplitude": 1,
+      "displayedQuantity": "rms",
+      "selectedOutputs": [
+        20,
+        24,
+        32
+      ],
+      "shape": [
+        651,
+        3
+      ]
+    },
+    {
+      "id": "superposition_m3_l8_l13_x",
+      "kind": "traces",
+      "fixture": "model3_locations8_13_sine200_50ms_x_outputs.f32",
+      "model": 3,
+      "locations": [
+        8,
+        13
+      ],
+      "signal": "sinusoid",
+      "frequencyHz": 200,
+      "durationMs": 50,
+      "targetAmplitude": [
+        1,
+        1
+      ],
+      "displayedQuantity": "x",
+      "selectedOutputs": [
+        19,
+        21,
+        24,
+        32
+      ],
+      "shape": [
+        586,
+        4
+      ]
+    },
+    {
+      "id": "taps_m3_l7_l8_l9_l10_mag",
+      "kind": "traces",
+      "fixture": "model3_locations7_8_9_10_taps_100ms_mag_outputs.f32",
+      "model": 3,
+      "locations": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "signal": "tap",
+      "tapTimeMs": 12,
+      "durationMs": 100,
+      "targetAmplitude": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "displayedQuantity": "mag",
+      "selectedOutputs": [
+        20,
+        21,
+        22,
+        24
+      ],
+      "shape": [
+        651,
+        4
+      ]
+    },
+    {
+      "id": "noise_m2_l5_x_spectra",
+      "kind": "spectra",
+      "fixture": "model2_location5_noise1000_x_spectra.f32",
+      "frequencyFixture": "model2_location5_noise1000_x_frequencies.f32",
+      "signalFixture": "noise_signal_1000_samples.f32",
+      "model": 2,
+      "locations": 5,
+      "signal": "fixture",
+      "durationSamples": 1000,
+      "targetAmplitude": 1,
+      "displayedQuantity": "x",
+      "selectedOutputs": [
+        1,
+        6,
+        8,
+        9,
+        48,
+        49,
+        72
+      ],
+      "shape": [
+        1025,
+        7
+      ],
+      "fftLength": 2048
+    },
+    {
+      "id": "sine_m1_l7_mag_interpolated_surface",
+      "kind": "interpolation",
+      "fixture": "model1_location7_sine100_100ms_mag_interpolated_surface.f32",
+      "model": 1,
+      "sourceCase": "sine_m1_l7_mag",
+      "width": 174,
+      "height": 464,
+      "displayedQuantity": "mag"
+    }
+  ]
+}
