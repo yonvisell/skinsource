@@ -237,6 +237,44 @@ Implementation note:
 
 - MATLAB fixture generation uses the explicit browser Hanning-window formula for tap fixtures, avoiding a mismatch with MATLAB `hanning()` defaults.
 
+### Final UI Polish And Browser QA
+
+- Adjusted selected-output labels so multi-selected neighboring points fan out slightly instead of sharing one offset.
+- Added wrapping protection for long selected-output metric values.
+
+Commands:
+
+```bash
+npm run test
+npm run build
+```
+
+Results:
+
+- Vitest passed: 3 files, 10 tests.
+- Production build passed.
+
+Desktop browser inspection:
+
+- Reloaded `http://127.0.0.1:5174/`.
+- Loaded `Fig. 2F sine`, applied rows, rendered, and switched to `Interpolated`.
+- Verified title is `SkinSource`.
+- Verified no visible `Projection` label and no `Sum components` option.
+- Verified compact colorbar and interpolated surface fill are present.
+- Verified selected outputs `19`, `21`, `24`, and `32` are visible and slightly less crowded after label offset adjustment.
+- Verified footer links/citation are present.
+
+Mobile browser inspection:
+
+- Temporarily set viewport to `390 x 844`.
+- Reloaded the app and verified no horizontal overflow.
+- Confirmed setup/stimulus/stimulus-array controls stack cleanly.
+- Reset browser viewport after the check.
+
+Final browser log check:
+
+- Current 5174 browser logs had no warnings/errors.
+
 ## 2026-07-09
 
 ### Planning Inputs

@@ -925,7 +925,11 @@ function OutputMap({
             {validOutputs.map(({ point, id }) => {
               const [x, y] = point as [number, number];
               const value = values?.[id - 1] ?? -42;
-              const isSelected = selected.includes(id);
+              const selectedIndex = selected.indexOf(id);
+              const isSelected = selectedIndex >= 0;
+              const labelAngle = -Math.PI / 4 + selectedIndex * 0.9;
+              const labelDx = 10 + 8 * Math.cos(labelAngle);
+              const labelDy = 4 + 8 * Math.sin(labelAngle);
               return (
                 <g
                   key={id}
@@ -943,7 +947,7 @@ function OutputMap({
                     className={isSelected ? "output-point selected" : "output-point"}
                   />
                   {isSelected ? (
-                    <text className="output-label" x={x + 10} y={y + 4}>
+                    <text className="output-label" x={x + labelDx} y={y + labelDy}>
                       {id}
                     </text>
                   ) : null}

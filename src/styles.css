@@ -549,6 +549,7 @@ textarea:focus {
 .metric strong {
   font-size: 18px;
   color: #f2f5f8;
+  overflow-wrap: anywhere;
 }
 
 .chart-host {
