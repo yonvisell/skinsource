@@ -227,3 +227,40 @@ Browser inspection:
 - Verified export buttons: Trace CSV, Spectrum CSV, Surface RMS CSV, Session JSON, Surface PNG.
 - Clicked Trace CSV; no new browser console warnings or errors were produced.
 - Browser download event was not observed by the automation runtime for the blob download, but the click path executed without app errors.
+
+### Final Verification Pass
+
+Commands:
+
+```bash
+npm run test
+npm run build
+/Applications/MATLAB_R2026a.app/bin/matlab -batch "run('scripts/generate_matlab_visual_reference.m')"
+```
+
+Results:
+
+- Vitest passed: 3 files, 7 tests.
+- Production build passed.
+- MATLAB wrote `verification/matlab/model1_location7_sine100_surface.png`.
+
+MATLAB visual reference:
+
+- Added `scripts/generate_matlab_visual_reference.m`.
+- Generated a reference point-map for Model 1, input location 7, 100 Hz sinusoid, 250 ms, magnitude RMS.
+- Visual comparison against the browser surface map showed matching orientation and qualitative response pattern: strongest response near the stimulated finger region with decay along the forearm.
+
+Clean browser run:
+
+- Restarted the Vite dev server.
+- Opened a fresh app tab.
+- Assigned the default 100 Hz sinusoid at location 7 and rendered.
+- Browser state reported `Rendered 1 input: 846 samples, projection mag`.
+- Selected output 20 RMS remained `-16.1 dB`.
+- Browser log reader still contained two old Vite hot-reload React root warnings from before the reusable-root patch; no new warnings appeared during the fresh run.
+
+Remaining issues:
+
+- Surface visualization is a point map, not MATLAB natural-neighbor interpolation.
+- Runtime spectra use next-power-of-two padded FFTs; this is documented and should be validated with the same MATLAB convention when spectrum parity tests are expanded.
+- Custom `.wav` import and video/GIF export are not yet implemented.
