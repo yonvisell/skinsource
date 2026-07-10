@@ -99,6 +99,8 @@ end
 fprintf('Converted %d impulse-response chunks.\n', numel(chunks));
 
 visualization = convertVisualizationAssets(upstreamDir, outDir);
+visualization.colormap = writeMatlabColormap(outDir);
+visualization.inputHandOutlineImage = writeInputHandOutline(upstreamDir, outDir);
 copyfile(fullfile(upstreamDir, 'documentation', 'inputLocations.png'), ...
     fullfile(referenceDir, 'inputLocations.png'));
 copyfile(fullfile(upstreamDir, 'documentation', 'outputLocations.png'), ...
@@ -242,4 +244,39 @@ function visualization = convertVisualizationAssets(upstreamDir, outDir)
         'path', visualization.path, ...
         'inputMapImage', '../reference/inputLocations.png', ...
         'outputMapImage', '../reference/outputLocations.png');
+end
+
+function relPath = writeMatlabColormap(outDir)
+    relPath = 'matlab-parula.json';
+    payload = struct();
+    payload.name = 'parula';
+    payload.source = 'MATLAB parula(256), matching the SkinSource MATLAB GUI default colormap.';
+    payload.values = parula(256);
+    writeJson(fullfile(outDir, relPath), payload);
+end
+
+function relPath = writeInputHandOutline(upstreamDir, outDir)
+    relPath = 'input-hand-outline.png';
+    imagePath = fullfile(upstreamDir, 'documentation', 'inputLocations.png');
+    image = im2double(imread(imagePath));
+    rgbSpread = max(image, [], 3) - min(image, [], 3);
+    grayLevel = mean(image, 3);
+    keep = rgbSpread < 0.075 & grayLevel > 0.42 & grayLevel < 0.92;
+
+    % Keep the hand drawing, not the lower legend illustrations.
+    keep(round(size(keep, 1) * 0.73):end, :) = false;
+    [rows, cols] = find(keep);
+    pad = 72;
+    rowRange = max(1, min(rows) - pad):min(size(keep, 1), max(rows) + pad);
+    colRange = max(1, min(cols) - pad):min(size(keep, 2), max(cols) + pad);
+    keep = keep(rowRange, colRange);
+
+    outline = zeros([size(keep), 3], 'uint8');
+    outline(:, :, 1) = uint8(151);
+    outline(:, :, 2) = uint8(164);
+    outline(:, :, 3) = uint8(178);
+
+    alpha = uint8(zeros(size(keep)));
+    alpha(keep) = uint8(150);
+    imwrite(outline, fullfile(outDir, relPath), 'Alpha', alpha);
 end

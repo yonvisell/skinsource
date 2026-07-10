@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-09T16:47:26-07:00",
+  "generatedAt": "2026-07-10T00:35:42-07:00",
   "source": {
     "name": "SkinSource",
     "datasetDoi": "10.5281/zenodo.10547601",
@@ -1294,7 +1294,9 @@
   "visualization": {
     "path": "visualization.json",
     "inputMapImage": "../reference/inputLocations.png",
-    "outputMapImage": "../reference/outputLocations.png"
+    "outputMapImage": "../reference/outputLocations.png",
+    "colormap": "matlab-parula.json",
+    "inputHandOutlineImage": "input-hand-outline.png"
   },
   "layoutNotes": "Each .f32 file stores single(Data(:)) from MATLAB. For dimensions [time, output, axis], zero-based JS offset is time + 522 * (output + 72 * axis).",
   "citation": "Tummala, N., Reardon, G., Fani, S., Goetz, D., Bianchi, M., and Visell, Y. (2024) SkinSource: A Data-Driven Toolbox for Predicting Touch-Elicited Vibrations in the Upper Limb. IEEE Haptics Symposium 2024. DOI: 10.1109/HAPTICS59260.2024.10520852"

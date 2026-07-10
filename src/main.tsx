@@ -18,9 +18,18 @@ import "./styles.css";
 import { OUTPUT_LOCATIONS, type ProjectionMode } from "./lib/constants";
 import {
   ChunkStore,
+  assetUrl,
   loadManifest,
+  loadMatlabColormap,
   loadVisualizationGeometry,
 } from "./lib/data";
+import {
+  DEFAULT_DB_MAX,
+  DEFAULT_DB_MIN,
+  colorForDb,
+  colorMapGradient,
+  type MatlabColormap,
+} from "./lib/colormap";
 import { oneSidedMagnitudeSpectrum } from "./lib/fft";
 import {
   decibelsRelativeToMax,
@@ -44,13 +53,46 @@ import type {
   VisualizationGeometry,
 } from "./lib/types";
 
-type TabKey = "surface" | "traces" | "spectrum" | "export";
+type TabKey = "surface" | "time" | "frequency" | "export";
 
 interface AppData {
   manifest: SkinSourceManifest;
   geometry: VisualizationGeometry;
+  colorMap: MatlabColormap;
   store: ChunkStore;
 }
+
+const DISPLAYED_QUANTITIES: Array<{
+  value: ProjectionMode;
+  label: string;
+  hint: string;
+}> = [
+  {
+    value: "mag",
+    label: "Vector magnitude",
+    hint: "sqrt(x^2 + y^2 + z^2) at each output location",
+  },
+  {
+    value: "z",
+    label: "Normal acceleration (z)",
+    hint: "Skin-normal accelerometer axis from the SkinSource data",
+  },
+  {
+    value: "x",
+    label: "Raw x acceleration",
+    hint: "Raw local accelerometer x axis",
+  },
+  {
+    value: "y",
+    label: "Raw y acceleration",
+    hint: "Raw local accelerometer y axis",
+  },
+  {
+    value: "rms",
+    label: "RMS-energy axis",
+    hint: "Dot product with the per-output axis carrying the largest RMS energy",
+  },
+];
 
 function App() {
   const [appData, setAppData] = useState<AppData | null>(null);
@@ -78,10 +120,13 @@ function App() {
     async function boot() {
       try {
         const manifest = await loadManifest();
-        const geometry = await loadVisualizationGeometry(manifest);
+        const [geometry, colorMap] = await Promise.all([
+          loadVisualizationGeometry(manifest),
+          loadMatlabColormap(manifest),
+        ]);
         const store = new ChunkStore(manifest);
         if (!alive) return;
-        setAppData({ manifest, geometry, store });
+        setAppData({ manifest, geometry, colorMap, store });
         setStatus("Manifest loaded. Preloading impulse-response chunks...");
         store
           .preloadAll((loaded, total) => {
@@ -179,7 +224,7 @@ function App() {
       setTab("surface");
       setStatus(
         `Rendered ${stimuli.length} input${stimuli.length === 1 ? "" : "s"}: ` +
-          `${response.samples} samples, projection ${projection}`,
+          `${response.samples} samples, ${displayedQuantityLabel(projection)}`,
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -196,7 +241,7 @@ function App() {
         <div className="brand">
           <Activity aria-hidden="true" size={22} />
           <div>
-            <h1>SkinSourceSim</h1>
+            <h1>SkinSource</h1>
             <p>Static upper-limb vibration workbench</p>
           </div>
         </div>
@@ -211,10 +256,14 @@ function App() {
 
       <section className="workbench">
         <aside className="control-rail">
-          <ControlSection title="Model">
-            <label>
-              Model
-              <select value={model} onChange={(event) => setModel(Number(event.target.value))}>
+          <ControlSection title="Setup">
+            <label title="Choose the upper-limb geometry and impulse-response set.">
+              Upper-limb model
+              <select
+                value={model}
+                onChange={(event) => setModel(Number(event.target.value))}
+                title="Choose the upper-limb geometry and impulse-response set."
+              >
                 {appData?.manifest.models.map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {entry.label} · {entry.handLengthMm} mm · {entry.sex}
@@ -222,28 +271,29 @@ function App() {
                 ))}
               </select>
             </label>
-            <label>
-              Projection
+            <label title="Choose the scalar quantity displayed on maps and plots.">
+              Displayed quantity
               <select
                 value={projection}
                 onChange={(event) => setProjection(event.target.value as ProjectionMode)}
+                title="Choose the scalar quantity displayed on maps and plots."
               >
-                <option value="mag">Magnitude xyz</option>
-                <option value="z">Z normal</option>
-                <option value="x">X raw</option>
-                <option value="y">Y raw</option>
-                <option value="rms">RMS energy axis</option>
-                <option value="soc">Sum components</option>
+                {DISPLAYED_QUANTITIES.map((quantity) => (
+                  <option key={quantity.value} value={quantity.value} title={quantity.hint}>
+                    {quantity.label}
+                  </option>
+                ))}
               </select>
             </label>
           </ControlSection>
 
           <ControlSection title="Stimulus">
-            <label>
+            <label title="Choose the hand contact site for the next assigned input.">
               Input location
               <select
                 value={inputLocation}
                 onChange={(event) => setInputLocation(Number(event.target.value))}
+                title="Choose the hand contact site for the next assigned input."
               >
                 {appData?.manifest.inputLocations.map((entry) => (
                   <option key={entry.id} value={entry.id}>
@@ -252,11 +302,12 @@ function App() {
                 ))}
               </select>
             </label>
-            <label>
-              Signal
+            <label title="Choose the stimulus waveform for the next assignment.">
+              Stimulus signal
               <select
                 value={signalKind}
                 onChange={(event) => setSignalKind(event.target.value as SignalKind)}
+                title="Choose the stimulus waveform for the next assignment."
               >
                 <option value="sinusoid">Sinusoid</option>
                 <option value="impulse">Impulse</option>
@@ -265,8 +316,8 @@ function App() {
               </select>
             </label>
             {signalKind === "sinusoid" ? (
-              <label>
-                Frequency Hz
+              <label title="Sinusoidal carrier frequency in hertz.">
+                Frequency (Hz)
                 <input
                   type="number"
                   min={25}
@@ -274,11 +325,12 @@ function App() {
                   step={1}
                   value={frequencyHz}
                   onChange={(event) => setFrequencyHz(Number(event.target.value))}
+                  title="Sinusoidal carrier frequency in hertz."
                 />
               </label>
             ) : null}
             {signalKind === "noise" ? (
-              <label>
+              <label title="Repeatable seed for white-noise generation.">
                 Seed
                 <input
                   type="number"
@@ -286,12 +338,13 @@ function App() {
                   step={1}
                   value={seed}
                   onChange={(event) => setSeed(Number(event.target.value))}
+                  title="Repeatable seed for white-noise generation."
                 />
               </label>
             ) : null}
             <div className="field-grid">
-              <label>
-                Duration ms
+              <label title="Stimulus duration; the response also includes the impulse-response tail.">
+                Stimulus duration (ms)
                 <input
                   type="number"
                   min={30}
@@ -299,19 +352,27 @@ function App() {
                   step={10}
                   value={durationMs}
                   onChange={(event) => setDurationMs(Number(event.target.value))}
+                  title="Stimulus duration; the response also includes the impulse-response tail."
                 />
               </label>
-              <label>
-                Target m/s²
+              <label title="Scale the generated input before SkinSource superposition.">
+                Response scale (m/s²)
                 <input
                   type="number"
                   step={0.1}
                   value={targetAmplitude}
                   onChange={(event) => setTargetAmplitude(Number(event.target.value))}
+                  title="Scale the generated input before SkinSource superposition."
                 />
               </label>
             </div>
-            <button className="action-button" type="button" onClick={addStimulus} disabled={!ready}>
+            <button
+              className="action-button"
+              type="button"
+              onClick={addStimulus}
+              disabled={!ready}
+              title="Assign or replace the stimulus at the selected input location."
+            >
               <Plus size={16} aria-hidden="true" />
               Assign
             </button>
@@ -349,6 +410,7 @@ function App() {
               type="button"
               onClick={() => void render()}
               disabled={!ready || isRendering}
+              title="Render the superposed SkinSource response for assigned inputs."
             >
               {isRendering ? (
                 <Loader2 className="spin" size={16} aria-hidden="true" />
@@ -364,12 +426,18 @@ function App() {
           <div className="map-strip">
             <InputMap
               geometry={appData?.geometry ?? null}
+              outlineUrl={
+                appData
+                  ? assetUrl(`data/${appData.manifest.visualization.inputHandOutlineImage}`)
+                  : null
+              }
               selected={inputLocation}
               activeLocations={stimuli.map((item) => item.location)}
               onSelect={setInputLocation}
             />
             <OutputMap
               geometry={appData?.geometry ?? null}
+              colorMap={appData?.colorMap ?? null}
               values={rmsDb}
               selected={selectedOutput}
               onSelect={setSelectedOutput}
@@ -378,8 +446,8 @@ function App() {
 
           <nav className="tabs" aria-label="Analysis views">
             <TabButton icon={<Waves size={15} />} label="Surface" tab="surface" active={tab} onClick={setTab} />
-            <TabButton icon={<LineChart size={15} />} label="Traces" tab="traces" active={tab} onClick={setTab} />
-            <TabButton icon={<BarChart3 size={15} />} label="Spectrum" tab="spectrum" active={tab} onClick={setTab} />
+            <TabButton icon={<LineChart size={15} />} label="Time domain" tab="time" active={tab} onClick={setTab} />
+            <TabButton icon={<BarChart3 size={15} />} label="Frequency" tab="frequency" active={tab} onClick={setTab} />
             <TabButton icon={<Download size={15} />} label="Export" tab="export" active={tab} onClick={setTab} />
           </nav>
 
@@ -387,10 +455,10 @@ function App() {
             {tab === "surface" ? (
               <SurfaceReadout selectedOutput={selectedOutput} rmsDb={rmsDb} />
             ) : null}
-            {tab === "traces" ? (
+            {tab === "time" ? (
               <TraceView projected={projected} trace={trace} selectedOutput={selectedOutput} />
             ) : null}
-            {tab === "spectrum" ? (
+            {tab === "frequency" ? (
               <SpectrumView spectrum={spectrum} selectedOutput={selectedOutput} />
             ) : null}
             {tab === "export" ? (
@@ -401,6 +469,7 @@ function App() {
                 spectrum={spectrum}
                 selectedOutput={selectedOutput}
                 model={model}
+                colorMap={appData?.colorMap ?? null}
                 projection={projection}
                 stimuli={stimuli}
               />
@@ -408,6 +477,27 @@ function App() {
           </div>
         </section>
       </section>
+      <footer className="app-footer">
+        <span>
+          N. Tummala et al., SkinSource, IEEE Haptics Symposium 2024 ·{" "}
+          <a
+            href="https://doi.org/10.1109/HAPTICS59260.2024.10520852"
+            target="_blank"
+            rel="noreferrer"
+          >
+            DOI
+          </a>
+        </span>
+        <span>
+          <a href="https://github.com/neelitummala/skinsource" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          {" · "}
+          <a href="https://doi.org/10.5281/zenodo.10547601" target="_blank" rel="noreferrer">
+            Zenodo data
+          </a>
+        </span>
+      </footer>
     </main>
   );
 }
@@ -445,6 +535,7 @@ function TabButton({
       type="button"
       className={active === tab ? "tab active" : "tab"}
       onClick={() => onClick(tab)}
+      title={`Open ${label} view`}
     >
       {icon}
       {label}
@@ -454,11 +545,13 @@ function TabButton({
 
 function InputMap({
   geometry,
+  outlineUrl,
   selected,
   activeLocations,
   onSelect,
 }: {
   geometry: VisualizationGeometry | null;
+  outlineUrl: string | null;
   selected: number;
   activeLocations: number[];
   onSelect: (location: number) => void;
@@ -466,33 +559,43 @@ function InputMap({
   const points = geometry?.inputLocations ?? [];
   const bounds = getBounds(points);
   return (
-    <section className="map-panel compact-map">
+    <section className="map-panel compact-map input-map">
       <header>
-        <h2>Inputs</h2>
-        <span>volar sites</span>
+        <h2>Input Locations</h2>
+        <span>volar hand</span>
       </header>
       {bounds ? (
-        <svg viewBox={`${bounds.minX - 22} ${bounds.minY - 22} ${bounds.width + 44} ${bounds.height + 44}`}>
-          {points.map(([x, y], index) => {
-            const id = index + 1;
-            const active = activeLocations.includes(id);
-            return (
-              <g key={id} onClick={() => onSelect(id)} className="map-point-button">
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={id === selected ? 13 : 10}
-                  className={
-                    id === selected ? "input-point selected" : active ? "input-point active" : "input-point"
-                  }
-                />
-                <text x={x} y={y + 4}>
-                  {id}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+        <div
+          className="input-map-stage"
+          style={outlineUrl ? { backgroundImage: `url(${outlineUrl})` } : undefined}
+        >
+          <svg viewBox={`${bounds.minX - 30} ${bounds.minY - 28} ${bounds.width + 60} ${bounds.height + 56}`}>
+            {points.map(([x, y], index) => {
+              const id = index + 1;
+              const active = activeLocations.includes(id);
+              return (
+                <g
+                  key={id}
+                  onClick={() => onSelect(id)}
+                  className="map-point-button"
+                  aria-label={`Input location ${id}`}
+                >
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={id === selected ? 13 : 10}
+                    className={
+                      id === selected ? "input-point selected" : active ? "input-point active" : "input-point"
+                    }
+                  />
+                  <text x={x} y={y + 4}>
+                    {id}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
       ) : (
         <div className="map-loading">Loading</div>
       )}
@@ -502,11 +605,13 @@ function InputMap({
 
 function OutputMap({
   geometry,
+  colorMap,
   values,
   selected,
   onSelect,
 }: {
   geometry: VisualizationGeometry | null;
+  colorMap: MatlabColormap | null;
   values: Float32Array | null;
   selected: number;
   onSelect: (location: number) => void;
@@ -520,42 +625,62 @@ function OutputMap({
   return (
     <section className="map-panel output-map">
       <header>
-        <h2>RMS Surface</h2>
-        <span>dB re. max</span>
+        <h2>Surface Response</h2>
+        <span>RMS, dB re max</span>
       </header>
-      {bounds ? (
-        <svg viewBox={`${bounds.minX - 20} ${bounds.minY - 20} ${bounds.width + 40} ${bounds.height + 40}`}>
-          {vertices.length > 0 ? (
-            <polyline
-              points={vertices.map(([x, y]) => `${x},${y}`).join(" ")}
-              className="surface-outline"
-            />
-          ) : null}
-          {validOutputs.map(({ point, id }) => {
-            const [x, y] = point as [number, number];
-            const value = values?.[id - 1] ?? -42;
-            return (
-              <g key={id} onClick={() => onSelect(id)} className="map-point-button">
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={id === selected ? 9 : 6.5}
-                  fill={colorForDb(value)}
-                  className={id === selected ? "output-point selected" : "output-point"}
-                />
-                {id === selected ? (
-                  <text className="output-label" x={x + 10} y={y + 4}>
-                    {id}
-                  </text>
-                ) : null}
-              </g>
-            );
-          })}
-        </svg>
+      {bounds && colorMap ? (
+        <div className="surface-stage">
+          <svg viewBox={`${bounds.minX - 20} ${bounds.minY - 20} ${bounds.width + 40} ${bounds.height + 40}`}>
+            {vertices.length > 0 ? (
+              <polyline
+                points={vertices.map(([x, y]) => `${x},${y}`).join(" ")}
+                className="surface-outline"
+              />
+            ) : null}
+            {validOutputs.map(({ point, id }) => {
+              const [x, y] = point as [number, number];
+              const value = values?.[id - 1] ?? -42;
+              return (
+                <g
+                  key={id}
+                  onClick={() => onSelect(id)}
+                  className="map-point-button"
+                  aria-label={`Output location ${id}`}
+                >
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={id === selected ? 9 : 6.5}
+                    fill={colorForDb(value, colorMap)}
+                    className={id === selected ? "output-point selected" : "output-point"}
+                  />
+                  {id === selected ? (
+                    <text className="output-label" x={x + 10} y={y + 4}>
+                      {id}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+          </svg>
+          <ColorBar colorMap={colorMap} />
+        </div>
       ) : (
         <div className="map-loading">Loading</div>
       )}
     </section>
+  );
+}
+
+function ColorBar({ colorMap }: { colorMap: MatlabColormap }) {
+  return (
+    <div className="colorbar" aria-label="Surface color scale">
+      <div className="colorbar-ramp" style={{ background: colorMapGradient(colorMap) }} />
+      <div className="colorbar-labels">
+        <span>{DEFAULT_DB_MAX} dB</span>
+        <span>{DEFAULT_DB_MIN} dB</span>
+      </div>
+    </div>
   );
 }
 
@@ -631,6 +756,7 @@ function ExportView({
   spectrum,
   selectedOutput,
   model,
+  colorMap,
   projection,
   stimuli,
 }: {
@@ -640,6 +766,7 @@ function ExportView({
   spectrum: Spectrum | null;
   selectedOutput: number;
   model: number;
+  colorMap: MatlabColormap | null;
   projection: ProjectionMode;
   stimuli: AssignedStimulus[];
 }) {
@@ -700,7 +827,8 @@ function ExportView({
             JSON.stringify(
               {
                 model,
-                projection,
+                displayedQuantity: projection,
+                displayedQuantityLabel: displayedQuantityLabel(projection),
                 selectedOutput,
                 sampleRateHz: projected.sampleRateHz,
                 samples: projected.samples,
@@ -724,14 +852,16 @@ function ExportView({
         type="button"
         onClick={() =>
           appData &&
+          colorMap &&
           void downloadSurfacePng(
             appData.geometry,
             rmsDb,
             selectedOutput,
+            colorMap,
             `skinsourcesim-model${model}-surface.png`,
           )
         }
-        disabled={!appData}
+        disabled={!appData || !colorMap}
       >
         <Download size={16} aria-hidden="true" />
         Surface PNG
@@ -824,24 +954,6 @@ function getBounds(points: Array<readonly [number | null, number | null]>) {
   return { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY };
 }
 
-function colorForDb(db: number): string {
-  if (!Number.isFinite(db)) return "#27303b";
-  const t = Math.max(0, Math.min(1, (db + 50) / 50));
-  const stops = [
-    [32, 43, 66],
-    [44, 111, 122],
-    [87, 162, 112],
-    [231, 187, 83],
-  ];
-  const scaled = t * (stops.length - 1);
-  const i = Math.min(stops.length - 2, Math.floor(scaled));
-  const f = scaled - i;
-  const rgb = stops[i].map((value, channel) =>
-    Math.round(value + (stops[i + 1][channel] - value) * f),
-  );
-  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
-}
-
 function traceCsv(projected: ProjectedVibrations, outputIndex: number): string {
   const lines = ["time_ms,acceleration"];
   for (let sample = 0; sample < projected.samples; sample += 1) {
@@ -885,9 +997,10 @@ async function downloadSurfacePng(
   geometry: VisualizationGeometry,
   values: Float32Array,
   selectedOutput: number,
+  colorMap: MatlabColormap,
   filename: string,
 ) {
-  const svg = surfaceSvgMarkup(geometry, values, selectedOutput);
+  const svg = surfaceSvgMarkup(geometry, values, selectedOutput, colorMap);
   const image = new Image();
   const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   const loaded = new Promise<void>((resolve, reject) => {
@@ -923,6 +1036,7 @@ function surfaceSvgMarkup(
   geometry: VisualizationGeometry,
   values: Float32Array,
   selectedOutput: number,
+  colorMap: MatlabColormap,
 ): string {
   const vertices = geometry.surfaceVertices;
   const outputs = geometry.outputLocations
@@ -942,7 +1056,7 @@ function surfaceSvgMarkup(
       const [x, y] = point as [number, number];
       const r = id === selectedOutput ? 9 : 6.2;
       const stroke = id === selectedOutput ? "#fff7cf" : "rgba(255,255,255,.62)";
-      return `<circle cx="${x}" cy="${y}" r="${r}" fill="${colorForDb(values[id - 1])}" stroke="${stroke}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
+      return `<circle cx="${x}" cy="${y}" r="${r}" fill="${colorForDb(values[id - 1], colorMap)}" stroke="${stroke}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
     })
     .join("");
   return `
@@ -953,6 +1067,10 @@ function surfaceSvgMarkup(
     ${circles}
   </g>
 </svg>`;
+}
+
+function displayedQuantityLabel(mode: ProjectionMode): string {
+  return DISPLAYED_QUANTITIES.find((quantity) => quantity.value === mode)?.label ?? mode;
 }
 
 const rootElement = document.getElementById("root")!;

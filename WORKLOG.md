@@ -8,6 +8,42 @@
 - Recorded that runtime interpolation must remain portable and installation-free: MATLAB may generate static interpolation assets during development, but the browser must consume bundled assets directly.
 - Updated `SPEC.md` and `ACCEPTANCE.md` to remove sum-of-components, rename projection-oriented wording to displayed quantities, require compact colorbar/MATLAB colormap, require input hand outline, add multi-output selection, add stimulus array and WAV workflows, and expand validation beyond RMS-only checks.
 
+### Correction Slice: Labels, Colormap, Colorbar, Hand Outline
+
+- Removed the non-invariant sum-of-components displayed quantity from the TypeScript mode union, compute projection function, and UI selector.
+- Renamed the app title to `SkinSource`, changed UI labels from projection/model-oriented wording to `Displayed quantity` and `Upper-limb model`, and added unobtrusive DOI/GitHub/Zenodo links.
+- Added MATLAB-generated static visual assets:
+  - `public/data/matlab-parula.json` from `parula(256)`
+  - `public/data/input-hand-outline.png` from the upstream input-location reference, keeping only the hand drawing on transparency
+- Updated the browser surface map and surface PNG export to use the MATLAB colormap table.
+- Added a compact in-panel colorbar with fixed `-50 dB` to `0 dB` scale labels.
+
+Commands:
+
+```bash
+/Applications/MATLAB_R2026a.app/bin/matlab -batch "run('scripts/convert_skinsource_assets.m')"
+npm run test
+npm run build
+npm run dev -- --port 5173
+```
+
+Results:
+
+- MATLAB conversion succeeded and regenerated `public/data/manifest.json`.
+- Vitest passed: 3 files, 7 tests.
+- Production build passed.
+- Vite started on `http://127.0.0.1:5174/` because `5173` was already occupied.
+
+Browser inspection:
+
+- Verified page title and H1 are `SkinSource`.
+- Verified `Displayed quantity` options are `Vector magnitude`, `Normal acceleration (z)`, `Raw x acceleration`, `Raw y acceleration`, and `RMS-energy axis`.
+- Verified no visible `Projection` label and no `Sum components` option remain.
+- Verified input panel displays the hand outline behind volar locations.
+- Verified surface panel displays the compact MATLAB-colorbar.
+- Rendered the default 100 Hz sinusoid at input 7; selected output 20 remained `-16.1 dB`, now shown with the MATLAB colormap.
+- Current 5174 browser logs had no warnings/errors. The log reader still showed two older 5173 React hot-reload warnings from the prior session.
+
 ## 2026-07-09
 
 ### Planning Inputs

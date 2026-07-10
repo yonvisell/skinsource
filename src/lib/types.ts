@@ -1,4 +1,7 @@
 import type { AXES, OUTPUT_LOCATIONS } from "./constants";
+import type { MatlabColormap } from "./colormap";
+
+export type { MatlabColormap };
 
 export interface ManifestModel {
   id: number;
@@ -48,6 +51,8 @@ export interface SkinSourceManifest {
     path: string;
     inputMapImage: string;
     outputMapImage: string;
+    inputHandOutlineImage: string;
+    colormap: string;
   };
   layoutNotes: string[];
   citation: string;

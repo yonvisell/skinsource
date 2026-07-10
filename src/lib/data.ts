@@ -1,5 +1,6 @@
 import type {
   ImpulseChunk,
+  MatlabColormap,
   ManifestChunk,
   SkinSourceManifest,
   VisualizationGeometry,
@@ -7,7 +8,7 @@ import type {
 
 const BASE_URL = import.meta.env.BASE_URL;
 
-function assetUrl(path: string): string {
+export function assetUrl(path: string): string {
   return `${BASE_URL}${path}`.replace(/\/{2,}/g, "/");
 }
 
@@ -27,6 +28,16 @@ export async function loadVisualizationGeometry(
     throw new Error(`Failed to load visualization geometry: ${response.status}`);
   }
   return (await response.json()) as VisualizationGeometry;
+}
+
+export async function loadMatlabColormap(
+  manifest: SkinSourceManifest,
+): Promise<MatlabColormap> {
+  const response = await fetch(assetUrl(`data/${manifest.visualization.colormap}`));
+  if (!response.ok) {
+    throw new Error(`Failed to load MATLAB colormap: ${response.status}`);
+  }
+  return (await response.json()) as MatlabColormap;
 }
 
 export function findChunk(

@@ -48,6 +48,8 @@ p {
 .app-shell {
   min-height: 100vh;
   padding: 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .topbar {
@@ -118,6 +120,7 @@ p {
   grid-template-columns: 318px minmax(0, 1fr);
   gap: 14px;
   padding-top: 14px;
+  flex: 1;
 }
 
 .control-rail {
@@ -268,13 +271,37 @@ input:focus {
   padding-bottom: 8px;
 }
 
-.map-panel svg {
+.map-panel svg,
+.surface-stage,
+.input-map-stage {
   width: 100%;
   height: 100%;
   min-height: 0;
 }
 
+.input-map-stage,
+.surface-stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.input-map-stage {
+  border-radius: 6px;
+  background-position: center 46%;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.input-map-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 11, 15, 0.18);
+  pointer-events: none;
+}
+
 .compact-map svg {
+  position: relative;
   transform: scaleY(-1);
 }
 
@@ -355,6 +382,38 @@ input:focus {
   paint-order: stroke;
   stroke: #071014;
   stroke-width: 4px;
+}
+
+.colorbar {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  grid-template-columns: 10px auto;
+  gap: 6px;
+  align-items: stretch;
+  height: 112px;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(9, 12, 17, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.colorbar-ramp {
+  width: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.colorbar-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #c8d1dc;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .tabs {
@@ -465,6 +524,25 @@ input:focus {
 .export-grid button:hover:not(:disabled) {
   border-color: rgba(116, 216, 209, 0.38);
   background: rgba(116, 216, 209, 0.1);
+}
+
+.app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 8px 2px 0;
+  color: #727d8b;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.app-footer a {
+  color: #9cb6c9;
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  color: #bfe6df;
 }
 
 .spin {

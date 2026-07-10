@@ -5,7 +5,7 @@ export const AXES = 3;
 export const CHANNELS = OUTPUT_LOCATIONS * AXES;
 
 export type AxisName = "x" | "y" | "z";
-export type ProjectionMode = "x" | "y" | "z" | "mag" | "rms" | "soc";
+export type ProjectionMode = "x" | "y" | "z" | "mag" | "rms";
 
 export function axisIndex(axis: AxisName): number {
   if (axis === "x") return 0;

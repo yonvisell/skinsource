@@ -24,7 +24,6 @@ export function projectVibrations(
       else if (mode === "y") value = y;
       else if (mode === "z") value = z;
       else if (mode === "mag") value = Math.hypot(x, y, z);
-      else if (mode === "soc") value = x + y + z;
       else {
         value = x * rmsAxis![0] + y * rmsAxis![1] + z * rmsAxis![2];
       }
