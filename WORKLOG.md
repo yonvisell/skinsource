@@ -173,6 +173,35 @@ WAV verification note:
 - Created a tiny local synthetic WAV under `tmp/` for testing and did not commit it.
 - The embedded browser automation surface does not expose file upload, and its page-evaluation sandbox lacks enough binary/browser constructors to synthesize a file-input event reliably. The WAV import code is type/build verified, and it uses standard browser APIs, but a manual file-picker verification is still pending for the final visual QA pass.
 
+### Surface Video Export Slice
+
+- Added `Surface WebM` export.
+- Video export animates the current displayed quantity over time, using the current surface mode:
+  - sensor map when `Sensors` is active
+  - MATLAB-style fill when `Interpolated` is active and the model interpolation asset is loaded
+- Export uses browser `canvas.captureStream()` and `MediaRecorder`, with WebM MIME fallback among VP9, VP8, and generic WebM.
+- Frames are capped to keep exports short and local.
+
+Commands:
+
+```bash
+npm run test
+npm run build
+```
+
+Results:
+
+- Vitest passed: 3 files, 7 tests.
+- Production build passed.
+
+Browser inspection:
+
+- Reloaded `http://127.0.0.1:5174/`.
+- Rendered the default 100 Hz sinusoid at input 7.
+- Opened the export view and verified `Surface WebM` appears with the other export buttons.
+- Clicked `Surface WebM`; browser status reported `Downloaded skinsourcesim-model1-surface.webm`.
+- Current 5174 browser logs had no warnings/errors.
+
 ## 2026-07-09
 
 ### Planning Inputs

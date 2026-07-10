@@ -696,8 +696,12 @@ function App() {
                 selectedOutputs={selectedOutputs}
                 model={model}
                 colorMap={appData?.colorMap ?? null}
+                interpolationAsset={interpolationAsset}
+                modelScale={modelScale}
                 projection={projection}
+                surfaceMode={surfaceMode}
                 stimuli={stimuli}
+                onStatus={setStatus}
               />
             ) : null}
           </div>
@@ -1100,8 +1104,12 @@ function ExportView({
   selectedOutputs,
   model,
   colorMap,
+  interpolationAsset,
+  modelScale,
   projection,
+  surfaceMode,
   stimuli,
+  onStatus,
 }: {
   appData: AppData | null;
   projected: ProjectedVibrations | null;
@@ -1111,8 +1119,12 @@ function ExportView({
   selectedOutputs: number[];
   model: number;
   colorMap: MatlabColormap | null;
+  interpolationAsset: SurfaceInterpolationAsset | null;
+  modelScale: number;
   projection: ProjectionMode;
+  surfaceMode: SurfaceMode;
   stimuli: AssignedStimulus[];
+  onStatus: (status: string) => void;
 }) {
   if (!projected || !rmsDb) {
     return <EmptyView title="Nothing to export" detail="Render a response first." />;
@@ -1210,6 +1222,28 @@ function ExportView({
       >
         <Download size={16} aria-hidden="true" />
         Surface PNG
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          appData &&
+          colorMap &&
+          void downloadSurfaceWebm({
+            geometry: appData.geometry,
+            projected,
+            selectedOutput,
+            colorMap,
+            interpolationAsset,
+            modelScale,
+            surfaceMode,
+            filename: `skinsourcesim-model${model}-surface.webm`,
+            onStatus,
+          })
+        }
+        disabled={!appData || !colorMap}
+      >
+        <Download size={16} aria-hidden="true" />
+        Surface WebM
       </button>
     </section>
   );
@@ -1377,6 +1411,262 @@ async function downloadSurfacePng(
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   }, "image/png");
+}
+
+interface SurfaceWebmRequest {
+  geometry: VisualizationGeometry;
+  projected: ProjectedVibrations;
+  selectedOutput: number;
+  colorMap: MatlabColormap;
+  interpolationAsset: SurfaceInterpolationAsset | null;
+  modelScale: number;
+  surfaceMode: SurfaceMode;
+  filename: string;
+  onStatus: (status: string) => void;
+}
+
+async function downloadSurfaceWebm({
+  geometry,
+  projected,
+  selectedOutput,
+  colorMap,
+  interpolationAsset,
+  modelScale,
+  surfaceMode,
+  filename,
+  onStatus,
+}: SurfaceWebmRequest) {
+  if (!("MediaRecorder" in window)) {
+    onStatus("This browser cannot export WebM video");
+    return;
+  }
+  const mimeType = preferredWebmMimeType();
+  if (!mimeType) {
+    onStatus("This browser has no supported WebM encoder");
+    return;
+  }
+
+  onStatus("Encoding surface WebM...");
+  const canvas = document.createElement("canvas");
+  canvas.width = 720;
+  canvas.height = 960;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    onStatus("Canvas video export is unavailable");
+    return;
+  }
+
+  const fps = 24;
+  const frameCount = Math.min(144, projected.samples);
+  const stride = Math.max(1, Math.floor(projected.samples / frameCount));
+  const stream = canvas.captureStream(fps);
+  const recorder = new MediaRecorder(stream, { mimeType });
+  const chunks: BlobPart[] = [];
+  recorder.ondataavailable = (event) => {
+    if (event.data.size > 0) chunks.push(event.data);
+  };
+  const stopped = new Promise<void>((resolve) => {
+    recorder.onstop = () => resolve();
+  });
+  recorder.start();
+
+  const maxAbs = maxAbsProjected(projected);
+  for (let sample = 0; sample < projected.samples; sample += stride) {
+    const frameValues = frameDbValues(projected, sample, maxAbs);
+    drawSurfaceFrame({
+      ctx,
+      geometry,
+      values: frameValues,
+      selectedOutput,
+      colorMap,
+      interpolationAsset,
+      modelScale,
+      surfaceMode,
+      timeMs: (1000 * sample) / projected.sampleRateHz,
+      width: canvas.width,
+      height: canvas.height,
+    });
+    await waitMs(1000 / fps);
+  }
+  recorder.stop();
+  await stopped;
+  downloadBlob(filename, new Blob(chunks, { type: mimeType }));
+  onStatus(`Downloaded ${filename}`);
+}
+
+function preferredWebmMimeType(): string | null {
+  const candidates = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+  ];
+  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? null;
+}
+
+function maxAbsProjected(projected: ProjectedVibrations): number {
+  let max = 0;
+  for (const value of projected.data) max = Math.max(max, Math.abs(value));
+  return max || 1;
+}
+
+function frameDbValues(
+  projected: ProjectedVibrations,
+  sample: number,
+  maxAbs: number,
+): Float32Array {
+  const out = new Float32Array(projected.outputLocations);
+  for (let output = 0; output < projected.outputLocations; output += 1) {
+    const value = Math.abs(projected.data[sample + projected.samples * output]);
+    out[output] = 20 * Math.log10(Math.max(Number.MIN_VALUE, value / maxAbs));
+  }
+  return out;
+}
+
+function drawSurfaceFrame({
+  ctx,
+  geometry,
+  values,
+  selectedOutput,
+  colorMap,
+  interpolationAsset,
+  modelScale,
+  surfaceMode,
+  timeMs,
+  width,
+  height,
+}: {
+  ctx: CanvasRenderingContext2D;
+  geometry: VisualizationGeometry;
+  values: Float32Array;
+  selectedOutput: number;
+  colorMap: MatlabColormap;
+  interpolationAsset: SurfaceInterpolationAsset | null;
+  modelScale: number;
+  surfaceMode: SurfaceMode;
+  timeMs: number;
+  width: number;
+  height: number;
+}) {
+  const vertices = geometry.surfaceVertices.map(([x, y]) => [
+    x * modelScale,
+    y * modelScale,
+  ] as [number, number]);
+  const outputs = geometry.outputLocations.map(([x, y]) => [
+    x == null ? null : x * modelScale,
+    y == null ? null : y * modelScale,
+  ] as [number | null, number | null]);
+  const validOutputs = outputs
+    .map((point, index) => ({ point, id: index + 1 }))
+    .filter(({ point }) => point[0] !== null && point[1] !== null);
+  const bounds = getBounds(vertices.length > 0 ? vertices : validOutputs.map(({ point }) => point as [number, number]));
+  if (!bounds) return;
+
+  ctx.fillStyle = "#10151d";
+  ctx.fillRect(0, 0, width, height);
+
+  const pad = 48;
+  const scale = Math.min(
+    (width - 2 * pad) / bounds.width,
+    (height - 2 * pad) / bounds.height,
+  );
+  const xOffset = (width - bounds.width * scale) / 2;
+  const yOffset = (height - bounds.height * scale) / 2;
+  const point = (x: number, y: number) => ({
+    x: xOffset + (x - bounds.minX) * scale,
+    y: yOffset + (bounds.maxY - y) * scale,
+  });
+
+  if (surfaceMode === "interpolated" && interpolationAsset) {
+    drawInterpolatedCanvasFrame(ctx, interpolationAsset, values, colorMap, point, scale);
+  }
+
+  ctx.strokeStyle = "rgba(232, 238, 247, 0.36)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  vertices.forEach(([x, y], index) => {
+    const p = point(x, y);
+    if (index === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  });
+  ctx.stroke();
+
+  for (const { point: outputPoint, id } of validOutputs) {
+    const [x, y] = outputPoint as [number, number];
+    const p = point(x, y);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, id === selectedOutput ? 6 : 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = colorForDb(values[id - 1], colorMap);
+    ctx.fill();
+    ctx.strokeStyle = id === selectedOutput ? "#fff7cf" : "rgba(255,255,255,.66)";
+    ctx.lineWidth = id === selectedOutput ? 2 : 1.2;
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "rgba(242,245,248,.92)";
+  ctx.font = "16px Inter, system-ui, sans-serif";
+  ctx.fillText(`SkinSource · ${timeMs.toFixed(1)} ms`, 24, 32);
+  ctx.fillStyle = "rgba(157,168,183,.9)";
+  ctx.font = "12px Inter, system-ui, sans-serif";
+  ctx.fillText(`${DEFAULT_DB_MIN} to ${DEFAULT_DB_MAX} dB re max`, 24, 52);
+}
+
+function drawInterpolatedCanvasFrame(
+  ctx: CanvasRenderingContext2D,
+  asset: SurfaceInterpolationAsset,
+  values: Float32Array,
+  colorMap: MatlabColormap,
+  point: (x: number, y: number) => { x: number; y: number },
+  scale: number,
+) {
+  const field = interpolateSurface(asset, values);
+  const temp = document.createElement("canvas");
+  temp.width = asset.width;
+  temp.height = asset.height;
+  const tempCtx = temp.getContext("2d");
+  if (!tempCtx) return;
+  const image = tempCtx.createImageData(asset.width, asset.height);
+  for (let pixel = 0; pixel < field.length; pixel += 1) {
+    const value = field[pixel];
+    const offset = pixel * 4;
+    if (!Number.isFinite(value)) {
+      image.data[offset + 3] = 0;
+      continue;
+    }
+    const [r, g, b] = rgbForDb(value, colorMap);
+    image.data[offset] = r;
+    image.data[offset + 1] = g;
+    image.data[offset + 2] = b;
+    image.data[offset + 3] = 225;
+  }
+  tempCtx.putImageData(image, 0, 0);
+
+  const min = point(asset.bounds.minX, asset.bounds.minY);
+  const max = point(asset.bounds.minX + asset.width, asset.bounds.minY + asset.height);
+  const left = min.x;
+  const top = max.y;
+  const drawWidth = asset.width * scale;
+  const drawHeight = asset.height * scale;
+  ctx.save();
+  ctx.translate(left, top + drawHeight);
+  ctx.scale(1, -1);
+  ctx.drawImage(temp, 0, 0, drawWidth, drawHeight);
+  ctx.restore();
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function downloadBlob(filename: string, blob: Blob) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
 function surfaceSvgMarkup(
