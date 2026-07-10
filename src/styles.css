@@ -444,6 +444,29 @@ input:focus {
   text-align: center;
 }
 
+.export-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.export-grid button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 64px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #eaf0f7;
+}
+
+.export-grid button:hover:not(:disabled) {
+  border-color: rgba(116, 216, 209, 0.38);
+  background: rgba(116, 216, 209, 0.1);
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }
@@ -493,7 +516,8 @@ input:focus {
   }
 
   .control-rail,
-  .readout-grid {
+  .readout-grid,
+  .export-grid {
     grid-template-columns: 1fr;
   }
 

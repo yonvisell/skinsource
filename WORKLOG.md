@@ -198,3 +198,32 @@ Visual notes:
 - Layout is compact and dark as intended.
 - Render button is low in the left rail at the default 1280x720 viewport but remains reachable; revisit after export controls land.
 - Sensor-map visualization is currently point-based rather than interpolated surface fill.
+
+### Export Slice
+
+Added local export actions:
+
+- selected trace CSV
+- selected spectrum CSV
+- surface RMS CSV
+- session metadata JSON
+- current surface sensor-map PNG
+
+Commands:
+
+```bash
+npm run test
+npm run build
+```
+
+Results:
+
+- Vitest passed: 3 files, 7 tests.
+- Production build passed.
+
+Browser inspection:
+
+- Reloaded the app, assigned the default 100 Hz input, rendered, and opened the Export tab.
+- Verified export buttons: Trace CSV, Spectrum CSV, Surface RMS CSV, Session JSON, Surface PNG.
+- Clicked Trace CSV; no new browser console warnings or errors were produced.
+- Browser download event was not observed by the automation runtime for the blob download, but the click path executed without app errors.

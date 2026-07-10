@@ -393,7 +393,18 @@ function App() {
             {tab === "spectrum" ? (
               <SpectrumView spectrum={spectrum} selectedOutput={selectedOutput} />
             ) : null}
-            {tab === "export" ? <ExportPlaceholder projected={projected} /> : null}
+            {tab === "export" ? (
+              <ExportView
+                appData={appData}
+                projected={projected}
+                rmsDb={rmsDb}
+                spectrum={spectrum}
+                selectedOutput={selectedOutput}
+                model={model}
+                projection={projection}
+                stimuli={stimuli}
+              />
+            ) : null}
           </div>
         </section>
       </section>
@@ -613,17 +624,119 @@ function SpectrumView({
   );
 }
 
-function ExportPlaceholder({ projected }: { projected: ProjectedVibrations | null }) {
-  return projected ? (
-    <div className="empty-view">
-      <h2>Export hooks ready</h2>
-      <p>
-        Rendered response: {projected.samples} samples x {projected.outputLocations} outputs.
-        Data/image export lands in the next slice.
-      </p>
-    </div>
-  ) : (
-    <EmptyView title="Nothing to export" detail="Render a response first." />
+function ExportView({
+  appData,
+  projected,
+  rmsDb,
+  spectrum,
+  selectedOutput,
+  model,
+  projection,
+  stimuli,
+}: {
+  appData: AppData | null;
+  projected: ProjectedVibrations | null;
+  rmsDb: Float32Array | null;
+  spectrum: Spectrum | null;
+  selectedOutput: number;
+  model: number;
+  projection: ProjectionMode;
+  stimuli: AssignedStimulus[];
+}) {
+  if (!projected || !rmsDb) {
+    return <EmptyView title="Nothing to export" detail="Render a response first." />;
+  }
+
+  const baseName = `skinsourcesim-model${model}-output${selectedOutput}`;
+  return (
+    <section className="export-grid">
+      <button
+        type="button"
+        onClick={() =>
+          downloadText(
+            `${baseName}-trace.csv`,
+            "text/csv",
+            traceCsv(projected, selectedOutput - 1),
+          )
+        }
+      >
+        <Download size={16} aria-hidden="true" />
+        Trace CSV
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          spectrum &&
+          downloadText(
+            `${baseName}-spectrum.csv`,
+            "text/csv",
+            spectrumCsv(spectrum),
+          )
+        }
+        disabled={!spectrum}
+      >
+        <Download size={16} aria-hidden="true" />
+        Spectrum CSV
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          downloadText(
+            `skinsourcesim-model${model}-surface-rms.csv`,
+            "text/csv",
+            rmsCsv(rmsDb),
+          )
+        }
+      >
+        <Download size={16} aria-hidden="true" />
+        Surface RMS CSV
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          downloadText(
+            `skinsourcesim-model${model}-session.json`,
+            "application/json",
+            JSON.stringify(
+              {
+                model,
+                projection,
+                selectedOutput,
+                sampleRateHz: projected.sampleRateHz,
+                samples: projected.samples,
+                stimuli: stimuli.map((stimulus) => ({
+                  location: stimulus.location,
+                  label: stimulus.label,
+                  targetAmplitude: stimulus.targetAmplitude,
+                  samples: stimulus.signal.length,
+                })),
+              },
+              null,
+              2,
+            ),
+          )
+        }
+      >
+        <Download size={16} aria-hidden="true" />
+        Session JSON
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          appData &&
+          void downloadSurfacePng(
+            appData.geometry,
+            rmsDb,
+            selectedOutput,
+            `skinsourcesim-model${model}-surface.png`,
+          )
+        }
+        disabled={!appData}
+      >
+        <Download size={16} aria-hidden="true" />
+        Surface PNG
+      </button>
+    </section>
   );
 }
 
@@ -729,7 +842,127 @@ function colorForDb(db: number): string {
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+function traceCsv(projected: ProjectedVibrations, outputIndex: number): string {
+  const lines = ["time_ms,acceleration"];
+  for (let sample = 0; sample < projected.samples; sample += 1) {
+    const timeMs = (1000 * sample) / projected.sampleRateHz;
+    const value = projected.data[sample + projected.samples * outputIndex];
+    lines.push(`${timeMs},${value}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function spectrumCsv(spectrum: Spectrum): string {
+  const lines = ["frequency_hz,magnitude"];
+  for (let index = 0; index < spectrum.frequenciesHz.length; index += 1) {
+    lines.push(`${spectrum.frequenciesHz[index]},${spectrum.magnitudes[index]}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function rmsCsv(values: Float32Array): string {
+  const lines = ["output_location,rms_db_re_max"];
+  for (let index = 0; index < values.length; index += 1) {
+    lines.push(`${index + 1},${values[index]}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function downloadText(filename: string, mimeType: string, text: string) {
+  const blob = new Blob([text], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function downloadSurfacePng(
+  geometry: VisualizationGeometry,
+  values: Float32Array,
+  selectedOutput: number,
+  filename: string,
+) {
+  const svg = surfaceSvgMarkup(geometry, values, selectedOutput);
+  const image = new Image();
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  const loaded = new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Failed to render surface SVG"));
+  });
+  image.src = url;
+  await loaded;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1200;
+  canvas.height = 1600;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is unavailable");
+  ctx.fillStyle = "#10151d";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }, "image/png");
+}
+
+function surfaceSvgMarkup(
+  geometry: VisualizationGeometry,
+  values: Float32Array,
+  selectedOutput: number,
+): string {
+  const vertices = geometry.surfaceVertices;
+  const outputs = geometry.outputLocations
+    .map((point, index) => ({ point, id: index + 1 }))
+    .filter(({ point }) => point[0] !== null && point[1] !== null);
+  const bounds = getBounds(vertices.length > 0 ? vertices : outputs.map(({ point }) => point));
+  if (!bounds) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600"></svg>`;
+  }
+  const pad = 32;
+  const viewBox = `${bounds.minX - pad} ${bounds.minY - pad} ${bounds.width + 2 * pad} ${bounds.height + 2 * pad}`;
+  const outline = vertices.length
+    ? `<polyline points="${vertices.map(([x, y]) => `${x},${y}`).join(" ")}" fill="none" stroke="rgba(232,238,247,.38)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>`
+    : "";
+  const circles = outputs
+    .map(({ point, id }) => {
+      const [x, y] = point as [number, number];
+      const r = id === selectedOutput ? 9 : 6.2;
+      const stroke = id === selectedOutput ? "#fff7cf" : "rgba(255,255,255,.62)";
+      return `<circle cx="${x}" cy="${y}" r="${r}" fill="${colorForDb(values[id - 1])}" stroke="${stroke}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
+    })
+    .join("");
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="${viewBox}">
+  <rect x="${bounds.minX - pad}" y="${bounds.minY - pad}" width="${bounds.width + 2 * pad}" height="${bounds.height + 2 * pad}" fill="#10151d"/>
+  <g transform="scale(1,-1) translate(0,${-(bounds.maxY + bounds.minY)})">
+    ${outline}
+    ${circles}
+  </g>
+</svg>`;
+}
+
+const rootElement = document.getElementById("root")!;
+const rootGlobal = globalThis as typeof globalThis & {
+  __skinSourceSimRoot?: ReturnType<typeof ReactDOM.createRoot>;
+};
+const root = rootGlobal.__skinSourceSimRoot ?? ReactDOM.createRoot(rootElement);
+rootGlobal.__skinSourceSimRoot = root;
+
+root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,
