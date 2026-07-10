@@ -1,8 +1,8 @@
-# SkinSourceSim Specification
+# SkinSource Specification
 
 ## Purpose
 
-SkinSourceSim is a static browser application for exploring SkinSource impulse-response data without MATLAB at runtime. It ports the practical workflow of the SkinSource MATLAB toolbox into a compact, dark, responsive workbench suitable for GitHub Pages.
+SkinSource is a static browser application for exploring SkinSource impulse-response data without MATLAB at runtime. It ports and extends the practical workflow of the SkinSource MATLAB toolbox into a compact, dark, responsive workbench suitable for GitHub Pages.
 
 The application lets users choose an upper-limb model, assign stimulus signals to one or more hand input locations, render predicted skin acceleration responses, inspect surface maps/traces/spectra, and export local analysis artifacts.
 
@@ -60,7 +60,7 @@ Core operations:
 - Compute full linear convolution using an optimized portable JS FFT library.
 - Cache impulse-response FFTs per active chunk and FFT length during the session.
 - Sum independently rendered input-location responses by superposition.
-- Support axis selection and projection modes corresponding to MATLAB behavior: single axes, magnitude, PCA-like projection if feasible, RMS-energy projection, and sum of components.
+- Support displayed quantities corresponding to scientifically meaningful MATLAB behavior: single axes, vector magnitude, PCA-like projection if feasible, and RMS-energy axis projection. Do not expose sum-of-components because it is not invariant.
 - Compute one-sided frequency magnitude spectra with documented normalization. The first implementation uses the next power-of-two FFT length because practical browser FFT libraries are power-of-two oriented; MATLAB validation for spectra should use the same padded length unless a robust arbitrary-length browser FFT is adopted later.
 
 Critical convention checks:
@@ -73,6 +73,13 @@ Critical convention checks:
 - window definitions
 - RMS and dB conventions
 
+Displayed quantity labels should be explicit and readable:
+
+- `Normal acceleration (z)`: \(u_z(x,t)\)
+- `Vector magnitude`: \(\|u(x,t)\| = \sqrt{u_x^2 + u_y^2 + u_z^2}\)
+- `RMS-energy axis`: \(u(x,t) \cdot e_{\mathrm{rms}}\)
+- `Raw x` and `Raw y`, labeled as local accelerometer axes
+
 ## User Experience
 
 The first screen is the actual workbench, not a landing page.
@@ -81,19 +88,19 @@ The UI should be dark, modern, compact, and fast. It should feel closer to a foc
 
 Expected controls:
 
-- model selector
+- upper-limb model selector
 - input-location map with contact-type cues
 - signal builder with reusable assigned inputs
 - render/status controls
-- axis/projection selector
+- displayed-quantity selector
 - output-location selection
 - export controls
 
 Possible analysis views:
 
-- Surface: RMS or selected-time response over upper limb
-- Traces: selected output-location time traces
-- Spectrum: selected output-location frequency spectra
+- Surface: RMS or selected-time response over the upper limb, with sensor and interpolated modes
+- Time domain: selected output-location traces, including multi-output small multiples
+- Frequency domain: selected output-location spectra
 - Inputs: assigned stimulus previews
 - Export: data, images, and possibly video/GIF
 
@@ -107,10 +114,12 @@ Initial export targets:
 - selected traces/spectra as CSV
 - surface/traces/spectrum images as PNG
 - project/session settings as JSON
+- short surface playback as WebM video where supported
+- animated GIF for short/compact exports if practical
 
 Potential later export:
 
-- short surface playback as video or animated image
+- richer publication-style figure export and higher-quality video controls
 
 ## Validation Strategy
 
@@ -126,10 +135,19 @@ Validation should compare web compute outputs against MATLAB outputs for represe
 
 Visual validation should compare browser views against MATLAB-generated reference plots where practical, focusing on qualitative correctness, orientation, color scaling, selected locations, and trace/spectrum shape.
 
+Surface interpolation should be MATLAB-faithful without runtime installation requirements. MATLAB may generate static interpolation assets during development/conversion, but the browser must apply them directly using bundled assets.
+
+Stimulus input should support both quick single-input assignment and efficient array workflows:
+
+- editable table of stimuli
+- presets mirroring upstream examples and paper figures
+- CSV/JSON import for multiple input rows
+- custom WAV import with browser-side resampling to 1300 Hz when needed
+
 ## Assumptions
 
 - The app may include converted dataset assets in the static site bundle; the raw `.mat` remains local source data.
 - Typical interactive stimulus duration is expected to be no more than about 4 seconds, though the app may allow longer durations if performance remains acceptable.
 - Time-domain float32 impulse responses are sufficiently precise for browser analysis; validation will quantify tolerances.
-- If exact MATLAB PCA projection parity becomes costly, it can be staged after single-axis, magnitude, RMS-energy, and sum-of-components projection.
+- If exact MATLAB PCA projection parity becomes costly, it can be staged after single-axis, vector magnitude, and RMS-energy projection.
 - The paper is secondary context. GitHub README, Zenodo description, and upstream MATLAB behavior define the practical product contract.

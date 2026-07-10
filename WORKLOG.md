@@ -1,5 +1,13 @@
 # SkinSourceSim Worklog
 
+## 2026-07-10
+
+### Revision Planning
+
+- Green-lit a second implementation pass focused on correcting labels and displayed quantities, adding MATLAB-faithful color/interpolation behavior, completing WAV/video/array workflows, broadening MATLAB validation, and slimming the UI.
+- Recorded that runtime interpolation must remain portable and installation-free: MATLAB may generate static interpolation assets during development, but the browser must consume bundled assets directly.
+- Updated `SPEC.md` and `ACCEPTANCE.md` to remove sum-of-components, rename projection-oriented wording to displayed quantities, require compact colorbar/MATLAB colormap, require input hand outline, add multi-output selection, add stimulus array and WAV workflows, and expand validation beyond RMS-only checks.
+
 ## 2026-07-09
 
 ### Planning Inputs
