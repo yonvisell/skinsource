@@ -5,6 +5,7 @@ import type {
   SkinSourceManifest,
   VisualizationGeometry,
 } from "./types";
+import type { SurfaceInterpolationManifest } from "./interpolation";
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -38,6 +39,16 @@ export async function loadMatlabColormap(
     throw new Error(`Failed to load MATLAB colormap: ${response.status}`);
   }
   return (await response.json()) as MatlabColormap;
+}
+
+export async function loadSurfaceInterpolationManifest(
+  manifest: SkinSourceManifest,
+): Promise<SurfaceInterpolationManifest> {
+  const response = await fetch(assetUrl(`data/${manifest.visualization.interpolation}`));
+  if (!response.ok) {
+    throw new Error(`Failed to load surface interpolation manifest: ${response.status}`);
+  }
+  return (await response.json()) as SurfaceInterpolationManifest;
 }
 
 export function findChunk(

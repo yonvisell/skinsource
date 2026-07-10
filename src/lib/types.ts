@@ -53,6 +53,7 @@ export interface SkinSourceManifest {
     outputMapImage: string;
     inputHandOutlineImage: string;
     colormap: string;
+    interpolation: string;
   };
   layoutNotes: string[];
   citation: string;

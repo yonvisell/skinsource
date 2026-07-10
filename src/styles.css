@@ -271,6 +271,39 @@ input:focus {
   padding-bottom: 8px;
 }
 
+.surface-header {
+  align-items: flex-start;
+}
+
+.surface-header > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.segmented-control {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.segmented-control button {
+  min-height: 24px;
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 7px;
+  color: #9da8b7;
+  background: transparent;
+  font-size: 11px;
+}
+
+.segmented-control button.active {
+  color: #ecfffd;
+  background: rgba(116, 216, 209, 0.17);
+}
+
 .map-panel svg,
 .surface-stage,
 .input-map-stage {
@@ -333,6 +366,10 @@ input:focus {
   stroke: rgba(232, 238, 247, 0.24);
   stroke-width: 2.2;
   vector-effect: non-scaling-stroke;
+}
+
+.interpolated-surface-image {
+  opacity: 0.9;
 }
 
 .map-point-button {

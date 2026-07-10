@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "source": "MATLAB surfaceinterpolation natural-neighbor basis converted to sparse row weights.",
+  "models": [
+    {
+      "model": 1,
+      "interpolationType": "natural",
+      "width": 174,
+      "height": 464,
+      "bounds": {
+        "minX": -258.91625180198929,
+        "maxX": -85.91625180198929,
+        "minY": -484.86354115041462,
+        "maxY": -21.863541150414619
+      },
+      "rowPtrPath": "interpolation/model-1-rowptr.u32",
+      "indicesPath": "interpolation/model-1-indices.u8",
+      "weightsPath": "interpolation/model-1-weights.f32",
+      "rowPtrLength": 80737,
+      "nnz": 151287,
+      "threshold": 1E-6
+    },
+    {
+      "model": 2,
+      "interpolationType": "natural",
+      "width": 164,
+      "height": 437,
+      "bounds": {
+        "minX": -244.12103741330421,
+        "maxX": -81.121037413304208,
+        "minY": -457.15705308467665,
+        "maxY": -21.157053084676647
+      },
+      "rowPtrPath": "interpolation/model-2-rowptr.u32",
+      "indicesPath": "interpolation/model-2-indices.u8",
+      "weightsPath": "interpolation/model-2-weights.f32",
+      "rowPtrLength": 71669,
+      "nnz": 134646,
+      "threshold": 1E-6
+    },
+    {
+      "model": 3,
+      "interpolationType": "natural",
+      "width": 184,
+      "height": 490,
+      "bounds": {
+        "minX": -273.7114661906744,
+        "maxX": -90.7114661906744,
+        "minY": -512.57002921615253,
+        "maxY": -23.570029216152534
+      },
+      "rowPtrPath": "interpolation/model-3-rowptr.u32",
+      "indicesPath": "interpolation/model-3-indices.u8",
+      "weightsPath": "interpolation/model-3-weights.f32",
+      "rowPtrLength": 90161,
+      "nnz": 169012,
+      "threshold": 1E-6
+    },
+    {
+      "model": 4,
+      "interpolationType": "natural",
+      "width": 164,
+      "height": 437,
+      "bounds": {
+        "minX": -244.12103741330421,
+        "maxX": -81.121037413304208,
+        "minY": -457.15705308467665,
+        "maxY": -21.157053084676647
+      },
+      "rowPtrPath": "interpolation/model-4-rowptr.u32",
+      "indicesPath": "interpolation/model-4-indices.u8",
+      "weightsPath": "interpolation/model-4-weights.f32",
+      "rowPtrLength": 71669,
+      "nnz": 134646,
+      "threshold": 1E-6
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import {
   assetUrl,
   loadManifest,
   loadMatlabColormap,
+  loadSurfaceInterpolationManifest,
   loadVisualizationGeometry,
 } from "./lib/data";
 import {
@@ -28,9 +29,15 @@ import {
   DEFAULT_DB_MIN,
   colorForDb,
   colorMapGradient,
+  rgbForDb,
   type MatlabColormap,
 } from "./lib/colormap";
 import { oneSidedMagnitudeSpectrum } from "./lib/fft";
+import {
+  SurfaceInterpolationStore,
+  interpolateSurface,
+  type SurfaceInterpolationAsset,
+} from "./lib/interpolation";
 import {
   decibelsRelativeToMax,
   projectVibrations,
@@ -54,11 +61,13 @@ import type {
 } from "./lib/types";
 
 type TabKey = "surface" | "time" | "frequency" | "export";
+type SurfaceMode = "sensors" | "interpolated";
 
 interface AppData {
   manifest: SkinSourceManifest;
   geometry: VisualizationGeometry;
   colorMap: MatlabColormap;
+  interpolationStore: SurfaceInterpolationStore;
   store: ChunkStore;
 }
 
@@ -110,6 +119,9 @@ function App() {
   const [stimuli, setStimuli] = useState<AssignedStimulus[]>([]);
   const [projected, setProjected] = useState<ProjectedVibrations | null>(null);
   const [rmsDb, setRmsDb] = useState<Float32Array | null>(null);
+  const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>("sensors");
+  const [interpolationAsset, setInterpolationAsset] =
+    useState<SurfaceInterpolationAsset | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [status, setStatus] = useState("Loading dataset manifest...");
   const [tab, setTab] = useState<TabKey>("surface");
@@ -120,13 +132,15 @@ function App() {
     async function boot() {
       try {
         const manifest = await loadManifest();
-        const [geometry, colorMap] = await Promise.all([
+        const [geometry, colorMap, interpolationManifest] = await Promise.all([
           loadVisualizationGeometry(manifest),
           loadMatlabColormap(manifest),
+          loadSurfaceInterpolationManifest(manifest),
         ]);
         const store = new ChunkStore(manifest);
+        const interpolationStore = new SurfaceInterpolationStore(interpolationManifest);
         if (!alive) return;
-        setAppData({ manifest, geometry, colorMap, store });
+        setAppData({ manifest, geometry, colorMap, interpolationStore, store });
         setStatus("Manifest loaded. Preloading impulse-response chunks...");
         store
           .preloadAll((loaded, total) => {
@@ -150,6 +164,27 @@ function App() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    setInterpolationAsset(null);
+    if (!appData) {
+      return () => {
+        alive = false;
+      };
+    }
+    appData.interpolationStore
+      .load(model)
+      .then((asset) => {
+        if (alive) setInterpolationAsset(asset);
+      })
+      .catch((error: unknown) => {
+        if (alive) setStatus(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [appData, model]);
 
   const trace = useMemo(() => {
     if (!projected) return null;
@@ -234,6 +269,8 @@ function App() {
   }
 
   const ready = Boolean(appData);
+  const modelScale =
+    appData?.manifest.models.find((entry) => entry.id === model)?.pixelToMmScale ?? 1;
 
   return (
     <main className="app-shell">
@@ -438,6 +475,10 @@ function App() {
             <OutputMap
               geometry={appData?.geometry ?? null}
               colorMap={appData?.colorMap ?? null}
+              interpolationAsset={interpolationAsset}
+              modelScale={modelScale}
+              surfaceMode={surfaceMode}
+              onSurfaceModeChange={setSurfaceMode}
               values={rmsDb}
               selected={selectedOutput}
               onSelect={setSelectedOutput}
@@ -606,31 +647,83 @@ function InputMap({
 function OutputMap({
   geometry,
   colorMap,
+  interpolationAsset,
+  modelScale,
+  surfaceMode,
+  onSurfaceModeChange,
   values,
   selected,
   onSelect,
 }: {
   geometry: VisualizationGeometry | null;
   colorMap: MatlabColormap | null;
+  interpolationAsset: SurfaceInterpolationAsset | null;
+  modelScale: number;
+  surfaceMode: SurfaceMode;
+  onSurfaceModeChange: (mode: SurfaceMode) => void;
   values: Float32Array | null;
   selected: number;
   onSelect: (location: number) => void;
 }) {
-  const vertices = geometry?.surfaceVertices ?? [];
-  const outputs = geometry?.outputLocations ?? [];
+  const vertices = (geometry?.surfaceVertices ?? []).map(([x, y]) => [
+    x * modelScale,
+    y * modelScale,
+  ] as [number, number]);
+  const outputs = (geometry?.outputLocations ?? []).map(([x, y]) => [
+    x == null ? null : x * modelScale,
+    y == null ? null : y * modelScale,
+  ] as [number | null, number | null]);
   const validOutputs = outputs
     .map((point, index) => ({ point, id: index + 1 }))
     .filter(({ point }) => point[0] !== null && point[1] !== null);
   const bounds = getBounds(vertices.length > 0 ? vertices : validOutputs.map(({ point }) => point as [number, number]));
+  const interpolatedImageUrl = useMemo(() => {
+    if (surfaceMode !== "interpolated" || !interpolationAsset || !values || !colorMap) {
+      return null;
+    }
+    return interpolatedSurfaceImageUrl(interpolationAsset, values, colorMap);
+  }, [surfaceMode, interpolationAsset, values, colorMap]);
   return (
     <section className="map-panel output-map">
-      <header>
-        <h2>Surface Response</h2>
-        <span>RMS, dB re max</span>
+      <header className="surface-header">
+        <div>
+          <h2>Surface Response</h2>
+          <span>RMS, dB re max</span>
+        </div>
+        <div className="segmented-control" aria-label="Surface rendering mode">
+          <button
+            type="button"
+            className={surfaceMode === "sensors" ? "active" : ""}
+            onClick={() => onSurfaceModeChange("sensors")}
+            title="Show measured dorsal output locations as colored sensors."
+          >
+            Sensors
+          </button>
+          <button
+            type="button"
+            className={surfaceMode === "interpolated" ? "active" : ""}
+            onClick={() => onSurfaceModeChange("interpolated")}
+            disabled={!interpolationAsset}
+            title="Fill the dorsal surface using the MATLAB natural-neighbor interpolation operator."
+          >
+            Interpolated
+          </button>
+        </div>
       </header>
       {bounds && colorMap ? (
         <div className="surface-stage">
           <svg viewBox={`${bounds.minX - 20} ${bounds.minY - 20} ${bounds.width + 40} ${bounds.height + 40}`}>
+            {interpolatedImageUrl && interpolationAsset ? (
+              <image
+                href={interpolatedImageUrl}
+                x={interpolationAsset.bounds.minX}
+                y={interpolationAsset.bounds.minY}
+                width={interpolationAsset.width}
+                height={interpolationAsset.height}
+                preserveAspectRatio="none"
+                className="interpolated-surface-image"
+              />
+            ) : null}
             {vertices.length > 0 ? (
               <polyline
                 points={vertices.map(([x, y]) => `${x},${y}`).join(" ")}
@@ -682,6 +775,35 @@ function ColorBar({ colorMap }: { colorMap: MatlabColormap }) {
       </div>
     </div>
   );
+}
+
+function interpolatedSurfaceImageUrl(
+  asset: SurfaceInterpolationAsset,
+  values: Float32Array,
+  colorMap: MatlabColormap,
+): string {
+  const interpolated = interpolateSurface(asset, values);
+  const canvas = document.createElement("canvas");
+  canvas.width = asset.width;
+  canvas.height = asset.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  const image = ctx.createImageData(asset.width, asset.height);
+  for (let pixel = 0; pixel < interpolated.length; pixel += 1) {
+    const value = interpolated[pixel];
+    const offset = pixel * 4;
+    if (!Number.isFinite(value)) {
+      image.data[offset + 3] = 0;
+      continue;
+    }
+    const [r, g, b] = rgbForDb(value, colorMap);
+    image.data[offset] = r;
+    image.data[offset + 1] = g;
+    image.data[offset + 2] = b;
+    image.data[offset + 3] = 230;
+  }
+  ctx.putImageData(image, 0, 0);
+  return canvas.toDataURL("image/png");
 }
 
 function SurfaceReadout({

@@ -44,6 +44,56 @@ Browser inspection:
 - Rendered the default 100 Hz sinusoid at input 7; selected output 20 remained `-16.1 dB`, now shown with the MATLAB colormap.
 - Current 5174 browser logs had no warnings/errors. The log reader still showed two older 5173 React hot-reload warnings from the prior session.
 
+### Interpolation Slice
+
+- Extended `scripts/convert_skinsource_assets.m` to generate static sparse interpolation operators for each upper-limb model.
+- The operators are derived from the upstream MATLAB `surfaceinterpolation` natural-neighbor basis with boundary extrapolation, using model-specific scale factors, masks, dorsal output locations, surface vertices, and adjacency matrices.
+- Runtime remains installation-free: the browser loads `rowPtr`, output index, and weight arrays and multiplies them by the current 72 output values.
+- Added `public/data/interpolation/manifest.json` plus per-model binary sparse arrays.
+- Added a `Sensors` / `Interpolated` toggle to the surface panel. Measured dorsal sensors remain visible and selectable over the interpolated fill.
+
+Asset size check:
+
+```bash
+du -sh public/data/interpolation public/data/interpolation/* | sort -h
+```
+
+Results:
+
+- `public/data/interpolation`: `4.0M`
+- Per-model nonzeros:
+  - Model 1: `151287`
+  - Model 2: `134646`
+  - Model 3: `169012`
+  - Model 4: `134646`
+
+Commands:
+
+```bash
+/Applications/MATLAB_R2026a.app/bin/matlab -batch "run('scripts/convert_skinsource_assets.m')"
+npm run test
+npm run build
+```
+
+Results:
+
+- MATLAB conversion succeeded and wrote interpolation assets.
+- Vitest passed: 3 files, 7 tests.
+- Production build passed.
+- Sparse interpolation integrity check showed active-pixel weight sums near 1.0:
+  - Model 1: `0.999999..1.000000`
+  - Model 2: `0.999998..1.000000`
+  - Model 3: `0.999999..1.000000`
+  - Model 4: `0.999998..1.000000`
+
+Browser inspection:
+
+- Reloaded `http://127.0.0.1:5174/`.
+- Verified the `Interpolated` toggle is present and disabled only until the active model interpolation asset loads.
+- Rendered the default 100 Hz sinusoid at input 7, switched to `Interpolated`, and verified an interpolated surface image is generated.
+- Visual check: interpolated fill aligns with dorsal sensor locations and the high-response region appears near the expected hand/finger region.
+- Current 5174 browser logs had no warnings/errors.
+
 ## 2026-07-09
 
 ### Planning Inputs

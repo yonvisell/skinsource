@@ -14,9 +14,19 @@ export function colorForDb(
   maxDb = DEFAULT_DB_MAX,
 ): string {
   if (!Number.isFinite(db)) return "#27303b";
-  const t = Math.max(0, Math.min(1, (db - minDb) / (maxDb - minDb)));
-  const [r, g, b] = sampleColorMap(colorMap, t);
+  const [r, g, b] = rgbForDb(db, colorMap, minDb, maxDb);
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+export function rgbForDb(
+  db: number,
+  colorMap: MatlabColormap,
+  minDb = DEFAULT_DB_MIN,
+  maxDb = DEFAULT_DB_MAX,
+): [number, number, number] {
+  if (!Number.isFinite(db)) return [39, 48, 59];
+  const t = Math.max(0, Math.min(1, (db - minDb) / (maxDb - minDb)));
+  return sampleColorMap(colorMap, t);
 }
 
 export function colorMapGradient(colorMap: MatlabColormap, steps = 16): string {

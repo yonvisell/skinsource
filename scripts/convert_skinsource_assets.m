@@ -101,6 +101,8 @@ fprintf('Converted %d impulse-response chunks.\n', numel(chunks));
 visualization = convertVisualizationAssets(upstreamDir, outDir);
 visualization.colormap = writeMatlabColormap(outDir);
 visualization.inputHandOutlineImage = writeInputHandOutline(upstreamDir, outDir);
+visualization.interpolation = writeInterpolationAssets( ...
+    upstreamDir, outDir, models, handLengthsMm, pixelHandLength);
 copyfile(fullfile(upstreamDir, 'documentation', 'inputLocations.png'), ...
     fullfile(referenceDir, 'inputLocations.png'));
 copyfile(fullfile(upstreamDir, 'documentation', 'outputLocations.png'), ...
@@ -279,4 +281,176 @@ function relPath = writeInputHandOutline(upstreamDir, outDir)
     alpha = uint8(zeros(size(keep)));
     alpha(keep) = uint8(150);
     imwrite(outline, fullfile(outDir, relPath), 'Alpha', alpha);
+end
+
+function relPath = writeInterpolationAssets(upstreamDir, outDir, modelIds, handLengthsMm, pixelHandLength)
+    relPath = fullfile('interpolation', 'manifest.json');
+    interpolationDir = fullfile(outDir, 'interpolation');
+    if ~isfolder(interpolationDir)
+        mkdir(interpolationDir);
+    end
+
+    visDir = fullfile(upstreamDir, 'source', 'visualization');
+    surfaceData = load(fullfile(visDir, 'surface.mat'));
+    outputLocationsData = load(fullfile(visDir, 'outputLocations.mat'));
+    adjacencyData = load(fullfile(visDir, 'adjacencyMatrix.mat'));
+
+    modelEntries = repmat(struct( ...
+        'model', 0, ...
+        'interpolationType', 'natural', ...
+        'width', 0, ...
+        'height', 0, ...
+        'bounds', struct('minX', 0, 'maxX', 0, 'minY', 0, 'maxY', 0), ...
+        'rowPtrPath', '', ...
+        'indicesPath', '', ...
+        'weightsPath', '', ...
+        'rowPtrLength', 0, ...
+        'nnz', 0, ...
+        'threshold', 0), numel(modelIds), 1);
+
+    for idx = 1:numel(modelIds)
+        model = modelIds(idx);
+        scaleFactor = handLengthsMm(idx) / pixelHandLength;
+        surface = scale(surfaceData.surface, scaleFactor);
+        outputLocations = outputLocationsData.outputLocations * scaleFactor;
+        adjacencyMatrix = adjacencyData.adjacencyMatrix * scaleFactor;
+        maskData = load(fullfile(visDir, sprintf('mask%d.mat', model)));
+        mask = logical(maskData.mask);
+
+        fprintf('Generating interpolation operator for model %d...\n', model);
+        operator = makeInterpolationOperator( ...
+            surface, outputLocations, adjacencyMatrix, mask, 'natural');
+
+        stem = sprintf('model-%d', model);
+        rowPtrPath = fullfile('interpolation', [stem '-rowptr.u32']);
+        indicesPath = fullfile('interpolation', [stem '-indices.u8']);
+        weightsPath = fullfile('interpolation', [stem '-weights.f32']);
+
+        writeUint32(fullfile(outDir, rowPtrPath), operator.rowPtr);
+        writeUint8(fullfile(outDir, indicesPath), operator.indices);
+        writeFloat32(fullfile(outDir, weightsPath), operator.weights);
+
+        modelEntries(idx).model = model;
+        modelEntries(idx).width = operator.width;
+        modelEntries(idx).height = operator.height;
+        modelEntries(idx).bounds = operator.bounds;
+        modelEntries(idx).rowPtrPath = rowPtrPath;
+        modelEntries(idx).indicesPath = indicesPath;
+        modelEntries(idx).weightsPath = weightsPath;
+        modelEntries(idx).rowPtrLength = numel(operator.rowPtr);
+        modelEntries(idx).nnz = numel(operator.indices);
+        modelEntries(idx).threshold = operator.threshold;
+    end
+
+    manifest = struct();
+    manifest.schemaVersion = 1;
+    manifest.source = 'MATLAB surfaceinterpolation natural-neighbor basis converted to sparse row weights.';
+    manifest.models = modelEntries;
+    writeJson(fullfile(outDir, relPath), manifest);
+end
+
+function operator = makeInterpolationOperator(surface, outputLocations, adjacencyMatrix, mask, interpolationType)
+    vertices = surface.Vertices;
+    xValues = min(vertices(:, 1)):max(vertices(:, 1));
+    yValues = min(vertices(:, 2)):max(vertices(:, 2));
+    [interpX, interpY] = meshgrid(xValues, yValues);
+
+    if ~isequal(size(mask), size(interpX))
+        error('Surface mask size [%s] does not match interpolation grid [%s].', ...
+            num2str(size(mask)), num2str(size(interpX)));
+    end
+
+    [boundaryWeights, measurementPoints] = boundaryInterpolationWeights( ...
+        outputLocations, vertices, adjacencyMatrix);
+    validMeasurement = ~logical(sum(isnan(measurementPoints), 2));
+    measurementPoints = measurementPoints(validMeasurement, :);
+
+    interpolant = scatteredInterpolant( ...
+        measurementPoints(:, 1), measurementPoints(:, 2), ...
+        zeros(size(measurementPoints, 1), 1), interpolationType, 'none');
+
+    nOutputs = size(outputLocations, 1);
+    height = size(interpX, 1);
+    width = size(interpX, 2);
+    basis = zeros(height, width, nOutputs, 'single');
+
+    for output = 1:nOutputs
+        data = zeros(nOutputs, 1);
+        data(output) = 1;
+        data(isnan(data)) = 0;
+        extrapolated = boundaryWeights * data;
+        allData = [data; extrapolated];
+        allData = allData(validMeasurement);
+        interpolant.Values = allData;
+        interpolated = interpolant(interpX, interpY);
+        interpolated(~mask) = NaN;
+        basis(:, :, output) = single(interpolated);
+    end
+
+    threshold = single(1e-6);
+    pixelCount = width * height;
+    rowPtr = zeros(pixelCount + 1, 1, 'uint32');
+    indices = zeros(0, 1, 'uint8');
+    weights = zeros(0, 1, 'single');
+    nnzCount = uint32(0);
+
+    for row = 1:height
+        for col = 1:width
+            pixel = uint32((row - 1) * width + col);
+            values = squeeze(basis(row, col, :));
+            keep = find(isfinite(values) & abs(values) > threshold);
+            if ~isempty(keep)
+                indices = [indices; uint8(keep - 1)]; %#ok<AGROW>
+                weights = [weights; single(values(keep))]; %#ok<AGROW>
+                nnzCount = nnzCount + uint32(numel(keep));
+            end
+            rowPtr(double(pixel) + 1) = nnzCount;
+        end
+    end
+
+    operator = struct();
+    operator.width = width;
+    operator.height = height;
+    operator.bounds = struct( ...
+        'minX', min(xValues), ...
+        'maxX', max(xValues), ...
+        'minY', min(yValues), ...
+        'maxY', max(yValues));
+    operator.rowPtr = rowPtr;
+    operator.indices = indices;
+    operator.weights = weights;
+    operator.threshold = threshold;
+end
+
+function [weights, allMeasurementPoints] = boundaryInterpolationWeights(originalPoints, boundaryPoints, adjacencyMatrix)
+    alpha = 2;
+    [minDists, minLocs] = mink(adjacencyMatrix, alpha, 2);
+
+    weights = nan(size(adjacencyMatrix));
+    for ii = 1:alpha
+        indices = sub2ind(size(weights), 1:length(minLocs(:, ii)), minLocs(:, ii)');
+        weights(indices) = minDists(:, ii);
+    end
+
+    weights = 1 - weights ./ sum(weights, 2, 'omitnan');
+    weights(isnan(weights)) = 0;
+    allMeasurementPoints = [originalPoints; boundaryPoints];
+end
+
+function writeUint32(path, data)
+    fid = fopen(path, 'w', 'ieee-le');
+    if fid < 0
+        error('Failed to open %s for writing.', path);
+    end
+    cleaner = onCleanup(@() fclose(fid));
+    fwrite(fid, uint32(data), 'uint32');
+end
+
+function writeUint8(path, data)
+    fid = fopen(path, 'w', 'ieee-le');
+    if fid < 0
+        error('Failed to open %s for writing.', path);
+    end
+    cleaner = onCleanup(@() fclose(fid));
+    fwrite(fid, uint8(data), 'uint8');
 end
