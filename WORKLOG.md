@@ -607,3 +607,48 @@ Remaining notes:
 
 - Chrome headless screenshots at very tall artificial mobile viewports can stretch auto grid rows; computed layout checks showed no horizontal overflow.
 - The user-provided `new/` intake folder is intentionally left untracked; deployable copies live under `public/assets/`.
+
+## 2026-07-10 Revision Pass: Compact Inputs, Auto Render, Collapsible Controls
+
+Implemented the next UI and interaction cleanup pass.
+
+Changes:
+
+- Replaced the older multiple-input rows workflow with compact `Add input` and `Replace` buttons.
+- Renamed the current input list to `Simulation inputs`.
+- Renamed the location selector to `Input contact location`.
+- Removed the manual render button; the app now re-renders automatically when simulation inputs, upper-limb recording, or displayed quantity changes.
+- Confirmed `Displayed quantity` is a response-view setting: it updates the surface, time-domain, and frequency-domain views using the existing simulation inputs without changing the input list.
+- Merged controls, simulation inputs, and downloads into one compact left rail.
+- Added a more prominent controls hide/show button; when hidden, the analysis area expands.
+- Kept input-location markers as clickable outline discs aligned over the hand-location image.
+- Added an interpolated-surface checkbox to show or hide output sensor locations and selected-output numbering.
+- Removed the extra time-domain panel glyph and made time/frequency panel subtitles sit on the title line.
+- Shifted the surface inset slightly right/up, removed the colorbar outline, tightened sliders/buttons, and made multiple-output plots taller and scrollable.
+- Added a compact `Movie WebM` export button for short surface-response animations.
+
+Verification:
+
+```bash
+npm run build
+npm run test
+```
+
+Results:
+
+- Production build passed.
+- Vitest passed: 3 files, 10 tests.
+
+Browser automation:
+
+- Confirmed clicking input location `14` on the hand image updates the selected input location.
+- Confirmed `Add input` adds a simulation input and triggers an automatic render.
+- Confirmed changing `Displayed quantity` to normal acceleration re-renders the current input as `Normal acceleration` without changing the input list.
+- Confirmed interpolated mode can hide output sensor markers, selected-output circle, and selected-output number.
+- Confirmed the controls rail collapse expands the analysis area from about `1118 px` to about `1376 px` at the tested desktop viewport.
+- Captured desktop interaction screenshot: `tmp/skinsourcesim-interaction-pass-2.png`.
+- Captured mobile layout screenshot: `tmp/skinsourcesim-mobile-add-replace.png`.
+
+Remaining notes:
+
+- The user-provided `new/` intake folder remains intentionally untracked; app-ready copies are already in `public/assets/`.

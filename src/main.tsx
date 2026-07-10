@@ -5,10 +5,14 @@ import {
   Database,
   Download,
   FileText,
-  LineChart,
+  Film,
+  Eye,
+  EyeOff,
   Loader2,
-  Play,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
+  RefreshCw,
   Trash2,
 } from "lucide-react";
 import uPlot from "uplot";
@@ -61,7 +65,6 @@ import type {
 } from "./lib/types";
 
 type SurfaceMode = "sensors" | "interpolated";
-type StimulusPreset = "taps" | "superposition" | "noise";
 
 interface AppData {
   manifest: SkinSourceManifest;
@@ -79,33 +82,33 @@ const DISPLAYED_QUANTITIES: Array<{
 }> = [
   {
     value: "mag",
-    label: "Vector magnitude, q(t) = sqrt(ux^2 + uy^2 + uz^2)",
+    label: "Vector magnitude",
     shortLabel: "Vector magnitude",
-    hint: "sqrt(x^2 + y^2 + z^2) at each output location",
+    hint: "q(t) = sqrt(ux(t)^2 + uy(t)^2 + uz(t)^2) at each output location",
   },
   {
     value: "z",
-    label: "Normal acceleration, q(t) = uz(t)",
+    label: "Normal acceleration (z)",
     shortLabel: "Normal acceleration",
-    hint: "Skin-normal accelerometer axis from the SkinSource data",
+    hint: "q(t) = uz(t), the skin-normal accelerometer axis from the SkinSource data",
   },
   {
     value: "x",
-    label: "Local x acceleration, q(t) = ux(t)",
+    label: "Local x acceleration",
     shortLabel: "Local x acceleration",
-    hint: "Raw local accelerometer x axis",
+    hint: "q(t) = ux(t), the raw local accelerometer x axis",
   },
   {
     value: "y",
-    label: "Local y acceleration, q(t) = uy(t)",
+    label: "Local y acceleration",
     shortLabel: "Local y acceleration",
-    hint: "Raw local accelerometer y axis",
+    hint: "q(t) = uy(t), the raw local accelerometer y axis",
   },
   {
     value: "rms",
-    label: "RMS-energy axis, q(t) = u(t) dot erms",
+    label: "RMS-energy axis",
     shortLabel: "RMS-energy axis",
-    hint: "Dot product with the per-output axis carrying the largest RMS energy",
+    hint: "q(t) = u(t) dot erms, the per-output axis carrying the largest RMS energy",
   },
 ];
 
@@ -153,19 +156,21 @@ function App() {
   const [wavSignal, setWavSignal] = useState<Float32Array | null>(null);
   const [wavFileName, setWavFileName] = useState<string | null>(null);
   const [wavStatus, setWavStatus] = useState("No WAV loaded");
-  const [arrayText, setArrayText] = useState("");
   const [projection, setProjection] = useState<ProjectionMode>("mag");
   const [stimuli, setStimuli] = useState<AssignedStimulus[]>([]);
   const [projected, setProjected] = useState<ProjectedVibrations | null>(null);
   const [rmsDb, setRmsDb] = useState<Float32Array | null>(null);
   const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>("sensors");
+  const [showInterpolatedSensors, setShowInterpolatedSensors] = useState(true);
   const [colorMinDb, setColorMinDb] = useState(DEFAULT_DB_MIN);
   const [colorMaxDb, setColorMaxDb] = useState(DEFAULT_DB_MAX);
   const [interpolationAsset, setInterpolationAsset] =
     useState<SurfaceInterpolationAsset | null>(null);
   const [isRendering, setIsRendering] = useState(false);
+  const [controlsCollapsed, setControlsCollapsed] = useState(false);
   const [status, setStatus] = useState("Loading dataset manifest...");
   const cacheRef = useRef(new ImpulseFftCache(6));
+  const renderTokenRef = useRef(0);
 
   useEffect(() => {
     let alive = true;
@@ -270,11 +275,11 @@ function App() {
     });
   }
 
-  function addStimulus() {
+  function makePendingStimulus(): AssignedStimulus | null {
     const signal = buildSignal();
     if (!signal) {
-      setStatus("Choose a WAV file before assigning a WAV stimulus");
-      return;
+      setStatus("Choose a WAV file before adding a WAV input");
+      return null;
     }
     const label =
       signalKind === "sinusoid"
@@ -284,41 +289,26 @@ function App() {
           : signalKind === "wav"
             ? wavFileName ?? "WAV"
             : signalKind;
-    const stimulus: AssignedStimulus = {
-      id: `${inputLocation}-${Date.now()}`,
+    return {
+      id: `${inputLocation}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       location: inputLocation,
       label,
       signal,
       targetAmplitude,
     };
-    setStimuli((current) => [
-      ...current.filter((item) => item.location !== inputLocation),
-      stimulus,
-    ]);
-    setStatus(`Assigned ${label} to input location ${inputLocation}`);
   }
 
-  function applyStimulusRows() {
-    try {
-      const parsed = parseStimulusRows(arrayText, {
-        durationMs,
-        frequencyHz,
-        seed,
-        targetAmplitude,
-      });
-      if (parsed.length === 0) {
-        setStatus("No valid stimulus rows found");
-        return;
-      }
-      const locations = new Set(parsed.map((stimulus) => stimulus.location));
-      setStimuli((current) => [
-        ...current.filter((stimulus) => !locations.has(stimulus.location)),
-        ...parsed,
-      ]);
-      setStatus(`Assigned ${parsed.length} stimuli from rows`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
-    }
+  function addStimulus(mode: "add" | "replace") {
+    const stimulus = makePendingStimulus();
+    if (!stimulus) return;
+    setStimuli((current) =>
+      mode === "replace"
+        ? [...current.filter((item) => item.location !== inputLocation), stimulus]
+        : [...current, stimulus],
+    );
+    setStatus(
+      `${mode === "replace" ? "Replaced" : "Added"} ${stimulus.label} at input ${inputLocation}`,
+    );
   }
 
   async function handleWavFile(file: File | null) {
@@ -341,33 +331,6 @@ function App() {
       setWavFileName(null);
       setWavStatus(error instanceof Error ? error.message : String(error));
     }
-  }
-
-  function loadStimulusPreset(preset: StimulusPreset) {
-    if (preset === "taps") {
-      setModel(3);
-      setProjection("mag");
-      setDurationMs(100);
-      setArrayText("7,tap,0,1\n8,tap,0,1\n9,tap,0,1\n10,tap,0,1");
-      setSelectedOutputs([20, 21, 22, 24]);
-      setStatus("Loaded multi-digit tap rows");
-      return;
-    }
-    if (preset === "superposition") {
-      setModel(3);
-      setProjection("x");
-      setDurationMs(50);
-      setArrayText("8,sinusoid,200,1\n13,sinusoid,200,1");
-      setSelectedOutputs([19, 21, 24, 32]);
-      setStatus("Loaded sinusoid superposition rows");
-      return;
-    }
-    setModel(2);
-    setProjection("x");
-    setDurationMs(Math.round((1000 * 1000) / SAMPLE_RATE_HZ));
-    setArrayText("5,noise,0,1");
-    setSelectedOutputs([1, 6, 8, 9, 48, 49, 72]);
-    setStatus("Loaded white-noise spectrum rows");
   }
 
   function buildGeneratedSignal(
@@ -395,37 +358,51 @@ function App() {
     return makeImpulse({ durationMs: options.durationMs });
   }
 
-  async function render() {
-    if (!appData || stimuli.length === 0) {
-      setStatus("Assign at least one stimulus before rendering");
+  useEffect(() => {
+    if (!appData) return;
+    const token = renderTokenRef.current + 1;
+    renderTokenRef.current = token;
+
+    if (stimuli.length === 0) {
+      setProjected(null);
+      setRmsDb(null);
+      setIsRendering(false);
       return;
     }
 
-    setIsRendering(true);
-    setStatus("Rendering SkinSource response...");
-    try {
-      const chunks = new Map();
-      for (const stimulus of stimuli) {
-        chunks.set(stimulus.location, await appData.store.load(model, stimulus.location));
+    async function renderCurrentStimuli() {
+      if (!appData) return;
+      setIsRendering(true);
+      setStatus("Rendering SkinSource response...");
+      try {
+        const chunks = new Map();
+        for (const stimulus of stimuli) {
+          chunks.set(stimulus.location, await appData.store.load(model, stimulus.location));
+        }
+        const response = renderVibrations({
+          chunksByLocation: chunks,
+          stimuli,
+          cache: cacheRef.current,
+        });
+        if (renderTokenRef.current !== token) return;
+        const nextProjected = projectVibrations(response, projection);
+        setProjected(nextProjected);
+        setRmsDb(decibelsRelativeToMax(rmsByOutput(nextProjected)));
+        setStatus(
+          `Rendered ${stimuli.length} input${stimuli.length === 1 ? "" : "s"}: ` +
+            `${response.samples} samples, ${displayedQuantityShortLabel(projection)}`,
+        );
+      } catch (error) {
+        if (renderTokenRef.current === token) {
+          setStatus(error instanceof Error ? error.message : String(error));
+        }
+      } finally {
+        if (renderTokenRef.current === token) setIsRendering(false);
       }
-      const response = renderVibrations({
-        chunksByLocation: chunks,
-        stimuli,
-        cache: cacheRef.current,
-      });
-      const nextProjected = projectVibrations(response, projection);
-      setProjected(nextProjected);
-      setRmsDb(decibelsRelativeToMax(rmsByOutput(nextProjected)));
-      setStatus(
-        `Rendered ${stimuli.length} input${stimuli.length === 1 ? "" : "s"}: ` +
-          `${response.samples} samples, ${displayedQuantityShortLabel(projection)}`,
-      );
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsRendering(false);
     }
-  }
+
+    void renderCurrentStimuli();
+  }, [appData, model, projection, stimuli]);
 
   const ready = Boolean(appData);
   const modelScale =
@@ -472,9 +449,30 @@ function App() {
         </div>
       </header>
 
-      <section className="workbench">
-        <aside className="control-rail">
-          <ControlSection title="Input signal" defaultOpen>
+      <section className={controlsCollapsed ? "workbench controls-collapsed" : "workbench"}>
+        <aside className={controlsCollapsed ? "control-rail collapsed" : "control-rail"}>
+          <section className="control-panel">
+            <button
+              className="control-rail-toggle"
+              type="button"
+              onClick={() => setControlsCollapsed((current) => !current)}
+              title={controlsCollapsed ? "Show controls" : "Hide controls"}
+              aria-expanded={!controlsCollapsed}
+            >
+              {controlsCollapsed ? (
+                <PanelLeftOpen size={18} aria-hidden="true" />
+              ) : (
+                <PanelLeftClose size={18} aria-hidden="true" />
+              )}
+              {controlsCollapsed ? (
+                <span className="sr-only">Show controls</span>
+              ) : (
+                <span>Controls</span>
+              )}
+            </button>
+            {controlsCollapsed ? null : (
+              <div className="control-panel-body">
+                <div className="control-group">
             <label title="Choose the SkinSource limb recording and impulse-response set.">
               Upper-limb recording
               <select
@@ -503,12 +501,12 @@ function App() {
                 ))}
               </select>
             </label>
-            <label title="Choose the hand contact site for the next assigned input.">
-              Input location for next stimulus
+            <label title="Choose the hand contact site for the next input signal.">
+              Input contact location
               <select
                 value={inputLocation}
                 onChange={(event) => setInputLocation(Number(event.target.value))}
-                title="Choose the hand contact site for the next assigned input."
+                title="Choose the hand contact site for the next input signal."
               >
                 {appData?.manifest.inputLocations.map((entry) => (
                   <option key={entry.id} value={entry.id}>
@@ -616,59 +614,43 @@ function App() {
               onChange={(value) => setColorMaxDb(Math.max(value, colorMinDb + 1))}
               title="Upper normalized RMS acceleration value mapped to the top of the colorbar."
             />
-            <button
-              className="action-button"
-              type="button"
-              onClick={addStimulus}
-              disabled={!ready}
-              title="Assign or replace the stimulus at the selected input location."
-            >
-              <Plus size={16} aria-hidden="true" />
-              Assign input
-            </button>
-          </ControlSection>
-
-          <ControlSection title="Multiple-input rows" defaultOpen={false}>
-            <div className="preset-row">
-              <button type="button" onClick={() => loadStimulusPreset("taps")} title="Load the multi-digit tap example rows.">
-                Fig. 2E taps
+            <div className="input-action-row">
+              <button
+                className="action-button"
+                type="button"
+                onClick={() => addStimulus("add")}
+                disabled={!ready}
+                title="Add this stimulus to the simulation input list."
+              >
+                <Plus size={13} aria-hidden="true" />
+                Add input
               </button>
-              <button type="button" onClick={() => loadStimulusPreset("superposition")} title="Load the two-location sinusoid superposition example rows.">
-                Fig. 2F sine
-              </button>
-              <button type="button" onClick={() => loadStimulusPreset("noise")} title="Load the white-noise spectrum example rows.">
-                Noise spectra
+              <button
+                className="action-button subtle"
+                type="button"
+                onClick={() => addStimulus("replace")}
+                disabled={!ready}
+                title="Replace existing stimuli at this input location with the current stimulus."
+              >
+                <RefreshCw size={13} aria-hidden="true" />
+                Replace
               </button>
             </div>
-            <label title="Rows use location, signal, value, scale. Signals: sinusoid, tap, impulse, noise.">
-              Batch input rows
-              <textarea
-                value={arrayText}
-                onChange={(event) => setArrayText(event.target.value)}
-                placeholder={"8,sinusoid,200,1\n13,sinusoid,200,1"}
-                spellCheck={false}
-                title="Rows use location, signal, value, scale. Signals: sinusoid, tap, impulse, noise."
-              />
-              <span className="field-note">
-                Format: input location, signal, value, gain. Example: 8,sinusoid,200,1
-              </span>
-            </label>
-            <button
-              className="action-button subtle"
-              type="button"
-              onClick={applyStimulusRows}
-              disabled={!ready}
-              title="Assign all stimulus rows, replacing existing rows at the same input locations."
-            >
-              <Plus size={16} aria-hidden="true" />
-              Apply rows
-            </button>
-          </ControlSection>
+                </div>
 
-          <ControlSection title="Stimuli to render" defaultOpen>
+                <div className="control-group">
+                  <div className="control-group-title">
+                    <h2>Simulation inputs</h2>
+                    {isRendering ? (
+                      <span className="rendering-pill">
+                        <Loader2 className="spin" size={12} aria-hidden="true" />
+                        Rendering
+                      </span>
+                    ) : null}
+                  </div>
             <div className="stimulus-list">
               {stimuli.length === 0 ? (
-                <p className="empty-note">No inputs assigned</p>
+                <p className="empty-note">No inputs added</p>
               ) : (
                 stimuli
                   .slice()
@@ -686,29 +668,16 @@ function App() {
                         }
                         aria-label={`Remove location ${stimulus.location}`}
                       >
-                        <Trash2 size={14} aria-hidden="true" />
+                        <Trash2 size={13} aria-hidden="true" />
                       </button>
                     </div>
                   ))
               )}
             </div>
-            <button
-              className="render-button"
-              type="button"
-              onClick={() => void render()}
-              disabled={!ready || isRendering}
-              title="Render the superposed SkinSource response for assigned inputs."
-            >
-              {isRendering ? (
-                <Loader2 className="spin" size={16} aria-hidden="true" />
-              ) : (
-                <Play size={16} aria-hidden="true" />
-              )}
-              Render
-            </button>
-          </ControlSection>
+                </div>
 
-          <ControlSection title="Downloads" defaultOpen={Boolean(projected)}>
+                <div className="control-group">
+                  <h2>Downloads</h2>
             <ExportView
               appData={appData}
               projected={projected}
@@ -727,7 +696,10 @@ function App() {
               colorMaxDb={colorMaxDb}
               onStatus={setStatus}
             />
-          </ControlSection>
+                </div>
+              </div>
+            )}
+          </section>
         </aside>
 
         <section className="analysis-pane">
@@ -745,6 +717,8 @@ function App() {
               colorMinDb={colorMinDb}
               colorMaxDb={colorMaxDb}
               surfaceMode={surfaceMode}
+              showInterpolatedSensors={showInterpolatedSensors}
+              onShowInterpolatedSensorsChange={setShowInterpolatedSensors}
               onSurfaceModeChange={setSurfaceMode}
               values={rmsDb}
               selected={selectedOutputs}
@@ -754,13 +728,12 @@ function App() {
 
           <section className="plot-panel">
             <header className="panel-title-row">
-              <div>
-                <h2>Time domain</h2>
+              <h2>
+                <span>Time domain</span>
                 <span>
                   {displayedQuantityShortLabel(projection)} · q(t), acceleration in m/s²
                 </span>
-              </div>
-              <LineChart size={15} aria-hidden="true" />
+              </h2>
             </header>
             <TraceView
               projected={projected}
@@ -771,12 +744,12 @@ function App() {
 
           <section className="plot-panel">
             <header className="panel-title-row">
-              <div>
-                <h2>Frequency domain</h2>
+              <h2>
+                <span>Frequency domain</span>
                 <span>
                   One-sided |FFT(q)|; magnitude is in acceleration units before normalization
                 </span>
-              </div>
+              </h2>
             </header>
             <SpectrumView spectra={selectedSpectra} selectedOutputs={selectedOutputs} />
           </section>
@@ -801,36 +774,6 @@ function App() {
         </span>
       </footer>
     </main>
-  );
-}
-
-function ControlSection({
-  title,
-  defaultOpen = true,
-  children,
-}: {
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  useEffect(() => {
-    if (defaultOpen) setOpen(true);
-  }, [defaultOpen]);
-  return (
-    <section className="control-section">
-      <button
-        className="section-toggle"
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        title={`${open ? "Collapse" : "Expand"} ${title}`}
-      >
-        <h2>{title}</h2>
-        <span aria-hidden="true">{open ? "-" : "+"}</span>
-      </button>
-      {open ? <div className="section-body">{children}</div> : null}
-    </section>
   );
 }
 
@@ -928,6 +871,8 @@ function OutputMap({
   colorMinDb,
   colorMaxDb,
   surfaceMode,
+  showInterpolatedSensors,
+  onShowInterpolatedSensorsChange,
   onSurfaceModeChange,
   values,
   selected,
@@ -940,6 +885,8 @@ function OutputMap({
   colorMinDb: number;
   colorMaxDb: number;
   surfaceMode: SurfaceMode;
+  showInterpolatedSensors: boolean;
+  onShowInterpolatedSensorsChange: (show: boolean) => void;
   onSurfaceModeChange: (mode: SurfaceMode) => void;
   values: Float32Array | null;
   selected: number[];
@@ -969,12 +916,11 @@ function OutputMap({
       colorMaxDb,
     );
   }, [surfaceMode, interpolationAsset, values, colorMap, colorMinDb, colorMaxDb]);
-  const primaryOutput = selected[selected.length - 1] ?? 20;
-  const primaryValue = values?.[primaryOutput - 1];
   const selectionLabel =
     selected.length <= 4
       ? selected.join(", ")
       : `${selected.slice(0, 4).join(", ")} +${selected.length - 4}`;
+  const showOutputMarkers = surfaceMode === "sensors" || showInterpolatedSensors;
   return (
     <section className="map-panel output-map">
       <header className="surface-header">
@@ -982,27 +928,43 @@ function OutputMap({
           <h2>Surface Response</h2>
           <span>
             click to select · outputs {selectionLabel}
-            {primaryValue == null ? "" : ` · ${primaryValue.toFixed(1)} dB`}
           </span>
         </div>
-        <div className="segmented-control" aria-label="Surface rendering mode">
-          <button
-            type="button"
-            className={surfaceMode === "sensors" ? "active" : ""}
-            onClick={() => onSurfaceModeChange("sensors")}
-            title="Show measured dorsal output locations as colored sensors."
-          >
-            Sensors
-          </button>
-          <button
-            type="button"
-            className={surfaceMode === "interpolated" ? "active" : ""}
-            onClick={() => onSurfaceModeChange("interpolated")}
-            disabled={!interpolationAsset}
-            title="Fill the dorsal surface using the MATLAB natural-neighbor interpolation operator."
-          >
-            Interpolated
-          </button>
+        <div className="surface-tools">
+          <div className="segmented-control" aria-label="Surface rendering mode">
+            <button
+              type="button"
+              className={surfaceMode === "sensors" ? "active" : ""}
+              onClick={() => onSurfaceModeChange("sensors")}
+              title="Show measured dorsal output locations as colored sensors."
+            >
+              Sensors
+            </button>
+            <button
+              type="button"
+              className={surfaceMode === "interpolated" ? "active" : ""}
+              onClick={() => onSurfaceModeChange("interpolated")}
+              disabled={!interpolationAsset}
+              title="Fill the dorsal surface using the MATLAB natural-neighbor interpolation operator."
+            >
+              Interpolated
+            </button>
+          </div>
+          {surfaceMode === "interpolated" ? (
+            <label className="inline-check" title="Show or hide output sensor locations on the interpolated surface.">
+              <input
+                type="checkbox"
+                checked={showInterpolatedSensors}
+                onChange={(event) => onShowInterpolatedSensorsChange(event.currentTarget.checked)}
+              />
+              {showInterpolatedSensors ? (
+                <Eye size={12} aria-hidden="true" />
+              ) : (
+                <EyeOff size={12} aria-hidden="true" />
+              )}
+              Sensors
+            </label>
+          ) : null}
         </div>
       </header>
       {bounds && colorMap ? (
@@ -1058,19 +1020,22 @@ function OutputMap({
                           : 4.9
                     }
                     fill={
-                      surfaceMode === "interpolated"
+                      !showOutputMarkers
+                        ? "transparent"
+                        : surfaceMode === "interpolated"
                         ? "transparent"
                         : colorForDb(value, colorMap, colorMinDb, colorMaxDb)
                     }
                     className={[
                       "output-point",
+                      !showOutputMarkers ? "hidden-marker" : "",
                       surfaceMode === "interpolated" ? "outline-only" : "",
                       isSelected ? "selected" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
                   />
-                  {isSelected ? (
+                  {showOutputMarkers && isSelected ? (
                     <text className="output-label" x={x + labelDx} y={y + labelDy}>
                       {id}
                     </text>
@@ -1157,13 +1122,14 @@ function TraceView({
   selectedOutputs: number[];
 }) {
   if (!projected || !traces || traces.length === 0) {
-    return <EmptyView title="No time-domain response yet" detail="Assign an input and render to inspect q(t)." />;
+    return <EmptyView title="No time-domain response yet" detail="Add an input to inspect q(t)." />;
   }
   const timeMs = makeTimeMs(projected.samples, projected.sampleRateHz);
   const yRange = symmetricRange(traces.flatMap(({ trace }) => Array.from(trace)));
   return (
     <section className="analysis-stack">
-      <div className="small-multiple-stack">
+      <div className="plot-scroll">
+        <div className="small-multiple-stack">
         {traces.map(({ output, trace }) => (
           <Chart
             key={output}
@@ -1177,6 +1143,7 @@ function TraceView({
             yRange={yRange}
           />
         ))}
+        </div>
       </div>
     </section>
   );
@@ -1190,14 +1157,15 @@ function SpectrumView({
   selectedOutputs: number[];
 }) {
   if (!spectra || spectra.length === 0) {
-    return <EmptyView title="No frequency-domain response yet" detail="Render a response to inspect |FFT(q)|." />;
+    return <EmptyView title="No frequency-domain response yet" detail="Add an input to inspect |FFT(q)|." />;
   }
   const yRange = positiveRange(
     spectra.flatMap(({ spectrum }) => Array.from(spectrum.magnitudes)),
   );
   return (
     <section className="analysis-stack">
-      <div className="small-multiple-stack">
+      <div className="plot-scroll">
+        <div className="small-multiple-stack">
         {spectra.map(({ output, spectrum }) => (
           <Chart
             key={output}
@@ -1211,6 +1179,7 @@ function SpectrumView({
             yRange={yRange}
           />
         ))}
+        </div>
       </div>
     </section>
   );
@@ -1252,7 +1221,7 @@ function ExportView({
   onStatus: (status: string) => void;
 }) {
   if (!projected || !rmsDb) {
-    return <EmptyView title="No downloads yet" detail="Render a response first." />;
+    return <EmptyView title="No downloads yet" detail="Add an input first." />;
   }
 
   const baseName = `skinsourcesim-model${model}-output${selectedOutput}`;
@@ -1275,7 +1244,7 @@ function ExportView({
           }
           title="Download q(t) for all selected outputs as CSV."
         >
-          <Download size={16} aria-hidden="true" />
+          <Download size={13} aria-hidden="true" />
           Time-domain CSV
         </button>
         <button
@@ -1291,7 +1260,7 @@ function ExportView({
           }
           title="Download the primary selected output as a peak-normalized mono WAV."
         >
-          <Download size={16} aria-hidden="true" />
+          <Download size={13} aria-hidden="true" />
           Time-domain WAV
         </button>
         <button
@@ -1307,7 +1276,7 @@ function ExportView({
           disabled={!spectrum}
           title="Download the one-sided frequency-domain magnitude for the primary output."
         >
-          <Download size={16} aria-hidden="true" />
+          <Download size={13} aria-hidden="true" />
           Frequency CSV
         </button>
         <button
@@ -1321,7 +1290,7 @@ function ExportView({
           }
           title="Download RMS surface values in dB relative to the rendered maximum."
         >
-          <Download size={16} aria-hidden="true" />
+          <Download size={13} aria-hidden="true" />
           Surface RMS CSV
         </button>
         <button
@@ -1353,7 +1322,7 @@ function ExportView({
           }
           title="Download enough configuration metadata to reproduce this render."
         >
-          <Download size={16} aria-hidden="true" />
+          <Download size={13} aria-hidden="true" />
           Session JSON
         </button>
         <button
@@ -1373,7 +1342,7 @@ function ExportView({
           disabled={!appData || !colorMap}
           title="Download a black-background surface map PNG without selected-output highlighting."
         >
-          <Download size={16} aria-hidden="true" />
+          <Download size={13} aria-hidden="true" />
           Surface PNG
         </button>
         <button
@@ -1396,10 +1365,10 @@ function ExportView({
             })
           }
           disabled={!appData || !colorMap}
-          title="Download a short WebM showing the surface response over time."
+          title="Render and download a short WebM movie showing the surface response over time."
         >
-          <Download size={16} aria-hidden="true" />
-          Surface WebM
+          <Film size={13} aria-hidden="true" />
+          Movie WebM
         </button>
       </div>
     </section>
@@ -2046,102 +2015,9 @@ function makeTimeMs(samples: number, sampleRateHz: number): Float64Array {
   );
 }
 
-interface StimulusRowDefaults {
-  durationMs: number;
-  frequencyHz: number;
-  seed: number;
-  targetAmplitude: number;
-}
-
 interface DecodedWavSignal {
   signal: Float32Array;
   originalSampleRate: number;
-}
-
-function parseStimulusRows(
-  text: string,
-  defaults: StimulusRowDefaults,
-): AssignedStimulus[] {
-  const rows = text.split(/\r?\n/);
-  const parsed: AssignedStimulus[] = [];
-  rows.forEach((rawRow, rowIndex) => {
-    const row = rawRow.trim();
-    if (!row || row.startsWith("#")) return;
-    const tokens = row.split(/[,\t ]+/).map((token) => token.trim()).filter(Boolean);
-    const location = Number(tokens[0]);
-    if (!Number.isInteger(location) || location < 1 || location > 20) {
-      throw new Error(`Row ${rowIndex + 1}: input location must be 1-20`);
-    }
-    const kind = normalizeRowSignalKind(tokens[1] ?? "sinusoid");
-    const value = parseOptionalNumber(tokens[2]);
-    const targetAmplitude = parseOptionalNumber(tokens[3]) ?? defaults.targetAmplitude;
-    const seed = parseOptionalNumber(tokens[4]) ?? defaults.seed;
-    const { signal, label } = makeStimulusRowSignal(kind, value, {
-      ...defaults,
-      seed,
-    });
-    parsed.push({
-      id: `row-${rowIndex}-${location}-${Date.now()}`,
-      location,
-      label,
-      signal,
-      targetAmplitude,
-    });
-  });
-  return parsed;
-}
-
-function normalizeRowSignalKind(token: string): Exclude<SignalKind, "wav"> {
-  const kind = token.toLowerCase();
-  if (kind === "sine" || kind === "sin" || kind === "sinusoid") return "sinusoid";
-  if (kind === "white" || kind === "whitenoise" || kind === "noise") return "noise";
-  if (kind === "tap" || kind === "taps") return "tap";
-  if (kind === "impulse" || kind === "imp") return "impulse";
-  throw new Error(`Unknown stimulus signal "${token}"`);
-}
-
-function makeStimulusRowSignal(
-  kind: Exclude<SignalKind, "wav">,
-  value: number | null,
-  defaults: StimulusRowDefaults,
-): { signal: Float32Array; label: string } {
-  if (kind === "sinusoid") {
-    const frequencyHz = value ?? defaults.frequencyHz;
-    return {
-      signal: makeSinusoid({
-        durationMs: defaults.durationMs,
-        frequencyHz,
-        window: "none",
-      }),
-      label: `${frequencyHz} Hz sine`,
-    };
-  }
-  if (kind === "noise") {
-    const rowSeed = Math.round(value ?? defaults.seed);
-    return {
-      signal: makeWhiteNoise({ durationMs: defaults.durationMs, seed: rowSeed }),
-      label: `white noise seed ${rowSeed}`,
-    };
-  }
-  if (kind === "tap") {
-    const tapTimeMs = value ?? 12;
-    return {
-      signal: makeTap(defaults.durationMs, tapTimeMs),
-      label: `${tapTimeMs} ms tap`,
-    };
-  }
-  const sampleIndex = Math.max(0, Math.round(value ?? 14));
-  return {
-    signal: makeImpulse({ durationMs: defaults.durationMs, sampleIndex }),
-    label: `impulse sample ${sampleIndex + 1}`,
-  };
-}
-
-function parseOptionalNumber(value: string | undefined): number | null {
-  if (value == null || value === "") return null;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) throw new Error(`Invalid number "${value}"`);
-  return parsed;
 }
 
 async function decodeWavFile(file: File): Promise<DecodedWavSignal> {

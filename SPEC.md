@@ -4,7 +4,7 @@
 
 SkinSource is a static browser application for exploring SkinSource impulse-response data without MATLAB at runtime. It ports and extends the practical workflow of the SkinSource MATLAB toolbox into a compact, dark, responsive workbench suitable for GitHub Pages.
 
-The application lets users choose an upper-limb recording, assign stimulus signals to one or more hand input locations, render predicted skin acceleration responses, inspect surface maps, time-domain signals, and frequency spectra, and export local analysis artifacts.
+The application lets users choose an upper-limb recording, add or replace stimulus signals at one or more hand input locations, automatically update predicted skin acceleration responses, inspect surface maps, time-domain signals, and frequency spectra, and export local analysis artifacts.
 
 ## Source Contract
 
@@ -61,6 +61,7 @@ Core operations:
 - Cache impulse-response FFTs per active chunk and FFT length during the session.
 - Sum independently rendered input-location responses by superposition.
 - Support displayed quantities corresponding to scientifically meaningful MATLAB behavior: single axes, vector magnitude, PCA-like projection if feasible, and RMS-energy axis projection. Do not expose sum-of-components because it is not invariant.
+- Treat the displayed quantity as a response-view setting: changing it updates the map and plots for the current simulation inputs without altering those inputs.
 - Compute one-sided frequency magnitude spectra with documented normalization. The first implementation uses the next power-of-two FFT length because practical browser FFT libraries are power-of-two oriented; MATLAB validation for spectra should use the same padded length unless a robust arbitrary-length browser FFT is adopted later.
 
 Critical convention checks:
@@ -84,14 +85,14 @@ Displayed quantity labels should be explicit and readable:
 
 The first screen is the actual workbench, not a landing page.
 
-The UI should be dark, modern, compact, and fast. It should feel closer to a focused data-science dashboard than a marketing site. Controls remain visible while users switch between analysis views.
+The UI should be dark, modern, compact, and fast. It should feel closer to a focused data-science dashboard than a marketing site. Controls remain available in a collapsible rail while users inspect analysis views; when the rail is hidden, the surface and plots should expand into the recovered width.
 
 Expected controls:
 
 - upper-limb recording selector
 - input-location map with contact-type cues
-- signal builder with reusable assigned inputs
-- render/status controls
+- signal builder with compact add/replace controls
+- automatic render status
 - displayed-quantity selector
 - output-location selection
 - export/download controls in the main control rail
@@ -101,7 +102,7 @@ Primary analysis views:
 - Surface: RMS or selected-time response over the upper limb, with sensor and interpolated modes
 - Time domain: selected output-location signals, including multi-output small multiples
 - Frequency domain: selected output-location spectra
-- Inputs: assigned stimulus previews
+- Simulation inputs: compact list of current stimulus inputs
 - Downloads: data, images, and short video from the rendered response
 
 The main surface, time-domain, and frequency-domain views should remain simultaneously visible when practical. The first implementation keeps persistent context controls and avoids burying core workflow.
@@ -138,11 +139,13 @@ Visual validation should compare browser views against MATLAB-generated referenc
 
 Surface interpolation should be MATLAB-faithful without runtime installation requirements. MATLAB may generate static interpolation assets during development/conversion, but the browser must apply them directly using bundled assets.
 
-Stimulus input should support both quick single-input assignment and efficient array workflows:
+Stimulus input should support quick single-input editing and multi-input construction without a manual render step:
 
-- editable table of stimuli
-- presets mirroring upstream examples and paper figures
-- CSV/JSON import for multiple input rows
+- add the current signal at the selected input location
+- replace existing signals at the selected input location
+- show a compact removable list of simulation inputs
+- automatically recompute the response when inputs, upper-limb recording, or displayed quantity changes
+- possible later CSV/JSON import if a compact text workflow becomes more useful than the current add/replace controls
 - custom WAV import with browser-side resampling to 1300 Hz when needed
 
 ## Assumptions

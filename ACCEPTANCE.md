@@ -30,9 +30,10 @@
 - Signal builders include at least sinusoid, tap/impulse approximation, white noise, and custom WAV import with resampling when needed.
 - Displayed quantities include at least normal acceleration `z`, vector magnitude, raw `x`, raw `y`, and RMS-energy axis projection.
 - Sum-of-components is not exposed as a displayed quantity.
+- Changing `Displayed quantity` updates the current surface, time-domain, and frequency-domain views without changing the simulation input list.
 - One-sided frequency spectra follow documented normalization and FFT-length rules; if zero-padded browser spectra are used, MATLAB validation uses the same padded length.
 - Numerical comparisons against MATLAB reference outputs pass within documented tolerance for representative examples.
-- Multiple input stimuli can be specified more efficiently than one-by-one UI assignment, either through compact rows, presets, import, or equivalent workflow.
+- Multiple input stimuli can be assembled through compact add/replace controls and a removable simulation-input list without a separate render button.
 
 ## UI
 
@@ -41,15 +42,16 @@
 - UI is dark, compact, responsive, and data-workflow oriented.
 - No `alert()`, `confirm()`, or modal confirmation flows.
 - App title is `SkinSource`.
-- UI uses clear labels such as `Upper-limb recording`, `Displayed quantity`, `Multiple-input rows`, and `Stimuli to render`.
+- UI uses clear labels such as `Upper-limb recording`, `Displayed quantity`, `Input contact location`, and `Simulation inputs`.
 - Citation and links to the paper DOI and original GitHub repository are visible and styled as links.
 - Buttons, font sizes, spacing, and labels are consistent and compact.
 - Mouseover hints are available for key controls.
+- Main controls are merged into a compact collapsible rail; hiding it expands the analysis area.
 - Core workflow is available:
   - choose upper-limb model
   - choose/input one or more stimulus locations
   - configure signal
-  - render output
+  - add or replace simulation inputs and see output update automatically
   - inspect surface response, time-domain signals, and frequency-domain spectra
   - export at least one data format and one image format
 
@@ -57,7 +59,9 @@
 
 - Surface view shows upper-limb response with both sensor-map and interpolated-surface modes.
 - Surface view has a compact colorbar using the MATLAB colormap, selectable dB range controls, and `Normalized RMS acceleration` labeling.
+- Interpolated-surface mode has a compact option to show or hide output sensor locations.
 - Input-location view shows an undistorted hand outline/location image aligned to the selection overlay.
+- Input-location selection uses clickable outline markers aligned to the hand image and exposes mouseover hints.
 - Output locations can be selected directly; multiple output locations can be selected.
 - Selected output locations drive time-domain traces.
 - Selected output locations drive frequency-domain spectra.
