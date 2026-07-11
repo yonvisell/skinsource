@@ -94,14 +94,17 @@ Expected controls:
 - signal builder with compact add/replace controls
 - automatic render status
 - displayed-quantity selector
+- paired surface color-scale range control
 - output-location selection
+- frequency-axis log toggles for spectrum inspection
+- session JSON save/load controls
 - export/download controls in the main control rail
 
 Primary analysis views:
 
-- Surface: RMS or selected-time response over the upper limb, with sensor and interpolated modes
-- Time domain: selected output-location signals, including multi-output small multiples
-- Frequency domain: selected output-location spectra
+- Surface: RMS or selected-time response over the upper limb, defaulting to interpolated mode with sensor mode available
+- Time: selected output-location signals, including multi-output small multiples
+- Frequency: selected output-location spectra with optional log-scaled axes
 - Simulation inputs: compact list of current stimulus inputs
 - Downloads: data, images, and short video from the rendered response
 
@@ -115,7 +118,7 @@ Initial export targets:
 - selected time-domain signals and spectra as CSV
 - selected output time-domain signal as WAV
 - surface/time-domain/spectrum images as PNG where implemented
-- project/session settings as JSON
+- self-contained project/session settings as JSON, with load support
 - short surface playback as WebM video where supported
 - animated GIF for short/compact exports if practical
 

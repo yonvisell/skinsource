@@ -652,3 +652,51 @@ Browser automation:
 Remaining notes:
 
 - The user-provided `new/` intake folder remains intentionally untracked; app-ready copies are already in `public/assets/`.
+
+## 2026-07-10 Revision Pass: Overlay Alignment, Session Load, Spectrum Axes
+
+Implemented another UI/behavior revision.
+
+Changes:
+
+- Rebuilt input-location selection as an SVG overlay sharing the exact `0 0 635 1000` coordinate system with the stimulation-location bitmap.
+- Verified the selectable ring center for input location `14` maps to the same screen coordinate as the image-space point.
+- Changed the Surface Response default mode to `Interpolated`.
+- Added a self-contained session JSON load path.
+- Updated saved session JSON to include surface settings, selected outputs, color scale, and stimulus signal samples.
+- Replaced separate surface scale floor/ceiling sliders with one paired range control.
+- Added compact `x log` and `y log` toggles for the frequency plot.
+- Renamed visible plot headings to `Time` and `Frequency`.
+- Reduced surface sensor-number labels and plot `Output NN` labels.
+- Lightened major plot grid lines.
+- Made the paper citation bold in the footer, converted the paper title itself to the DOI link, shortened the GitHub label, and added bold lower-right contact information.
+- Reordered the controls into input controls, simulation inputs, output controls, then session/downloads.
+- Added a subtle Surface Response border flash after successful automatic renders.
+- Updated root and in-app README text to remove the old batch-row workflow and mention session load/log axes.
+
+Verification:
+
+```bash
+npm run build
+npm run test
+```
+
+Results:
+
+- Production build passed.
+- Vitest passed: 3 files, 10 tests.
+
+Browser automation:
+
+- Used temporary headless Chrome CDP with a `1440 x 980` viewport.
+- Confirmed default surface mode is `Interpolated`.
+- Confirmed input marker `14` center equals the SVG-transformed image coordinate, with image ratio `0.635`.
+- Confirmed clicking input marker `14` selects input contact location `14`.
+- Confirmed `Add input` automatically renders: `Rendered 1 input: 846 samples, Vector magnitude`.
+- Confirmed both frequency log-axis toggles enter the active state.
+- Confirmed synthetic session JSON load restores model `2`, displayed quantity `z`, hidden interpolated sensors, and one loaded input.
+- Captured visual screenshot: `tmp/skinsourcesim-revision-desktop-cdp.png`.
+
+Remaining notes:
+
+- `new/` remains untracked intake material.

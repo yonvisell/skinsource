@@ -58,16 +58,20 @@
 ## Visualization
 
 - Surface view shows upper-limb response with both sensor-map and interpolated-surface modes.
+- Surface view defaults to interpolated mode when the interpolation asset is available.
 - Surface view has a compact colorbar using the MATLAB colormap, selectable dB range controls, and `Normalized RMS acceleration` labeling.
+- Surface color-scale floor and ceiling are controlled by one paired range control.
 - Interpolated-surface mode has a compact option to show or hide output sensor locations.
 - Input-location view shows an undistorted hand outline/location image aligned to the selection overlay.
 - Input-location selection uses clickable outline markers aligned to the hand image and exposes mouseover hints.
 - Output locations can be selected directly; multiple output locations can be selected.
 - Selected output locations drive time-domain traces.
 - Selected output locations drive frequency-domain spectra.
+- Frequency plots include compact horizontal and vertical log-axis toggles.
 - Time-domain labels expose the selected displayed quantity equation without a separate explanatory subpanel.
 - Multi-output time-domain signals can be shown as stacked small multiples.
 - Visual orientation, labels, color scaling, and selected-point behavior are verified against MATLAB or upstream reference assets.
+- Session JSON can be saved and loaded to restore view settings and simulation inputs.
 
 ## Verification
 

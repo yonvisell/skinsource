@@ -14,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  Upload,
 } from "lucide-react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
@@ -160,7 +161,7 @@ function App() {
   const [stimuli, setStimuli] = useState<AssignedStimulus[]>([]);
   const [projected, setProjected] = useState<ProjectedVibrations | null>(null);
   const [rmsDb, setRmsDb] = useState<Float32Array | null>(null);
-  const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>("sensors");
+  const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>("interpolated");
   const [showInterpolatedSensors, setShowInterpolatedSensors] = useState(true);
   const [colorMinDb, setColorMinDb] = useState(DEFAULT_DB_MIN);
   const [colorMaxDb, setColorMaxDb] = useState(DEFAULT_DB_MAX);
@@ -168,9 +169,13 @@ function App() {
     useState<SurfaceInterpolationAsset | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
+  const [surfaceFlash, setSurfaceFlash] = useState(false);
+  const [spectrumLogX, setSpectrumLogX] = useState(false);
+  const [spectrumLogY, setSpectrumLogY] = useState(false);
   const [status, setStatus] = useState("Loading dataset manifest...");
   const cacheRef = useRef(new ImpulseFftCache(6));
   const renderTokenRef = useRef(0);
+  const surfaceFlashTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -230,6 +235,27 @@ function App() {
       alive = false;
     };
   }, [appData, model]);
+
+  useEffect(
+    () => () => {
+      if (surfaceFlashTimerRef.current !== null) {
+        window.clearTimeout(surfaceFlashTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  function flashSurfaceResponse() {
+    if (surfaceFlashTimerRef.current !== null) {
+      window.clearTimeout(surfaceFlashTimerRef.current);
+    }
+    setSurfaceFlash(false);
+    window.requestAnimationFrame(() => setSurfaceFlash(true));
+    surfaceFlashTimerRef.current = window.setTimeout(() => {
+      setSurfaceFlash(false);
+      surfaceFlashTimerRef.current = null;
+    }, 680);
+  }
 
   const selectedOutput = selectedOutputs[selectedOutputs.length - 1] ?? 20;
   const selectedTraces = useMemo(() => {
@@ -309,6 +335,68 @@ function App() {
     setStatus(
       `${mode === "replace" ? "Replaced" : "Added"} ${stimulus.label} at input ${inputLocation}`,
     );
+  }
+
+  async function handleSessionFile(file: File | null) {
+    if (!file) return;
+    try {
+      const session = JSON.parse(await file.text()) as Record<string, unknown>;
+      const nextModel = boundedInteger(session.model, 1, 4);
+      if (nextModel) setModel(nextModel);
+
+      const quantity = session.displayedQuantity ?? session.projection;
+      if (isProjectionMode(quantity)) setProjection(quantity);
+
+      const outputs = toNumberArray(session.selectedOutputs)
+        .map((value) => Math.round(value))
+        .filter((value) => value >= 1 && value <= 72);
+      if (outputs.length > 0) setSelectedOutputs(Array.from(new Set(outputs)));
+
+      const colorScale = isRecord(session.colorScale) ? session.colorScale : session;
+      const minDb = toFiniteNumber(colorScale.colorMinDb ?? colorScale.minDb);
+      const maxDb = toFiniteNumber(colorScale.colorMaxDb ?? colorScale.maxDb);
+      if (minDb !== null && maxDb !== null && minDb < maxDb) {
+        setColorMinDb(clampNumber(minDb, -80, -1));
+        setColorMaxDb(clampNumber(maxDb, -79, 0));
+      }
+
+      if (isSurfaceMode(session.surfaceMode)) setSurfaceMode(session.surfaceMode);
+      if (typeof session.showInterpolatedSensors === "boolean") {
+        setShowInterpolatedSensors(session.showInterpolatedSensors);
+      }
+
+      const loadedStimuli = Array.isArray(session.stimuli)
+        ? session.stimuli.flatMap((entry, index): AssignedStimulus[] => {
+            if (!isRecord(entry)) return [];
+            const location = boundedInteger(entry.location, 1, 20);
+            const signalValues = toNumberArray(entry.signal ?? entry.signalSamples);
+            if (!location || signalValues.length === 0) return [];
+            return [
+              {
+                id: `session-${Date.now()}-${index}`,
+                location,
+                label:
+                  typeof entry.label === "string" && entry.label.trim()
+                    ? entry.label.trim()
+                    : "Loaded signal",
+                signal: Float32Array.from(signalValues),
+                targetAmplitude: toFiniteNumber(entry.targetAmplitude) ?? 1,
+              },
+            ];
+          })
+        : [];
+
+      if (loadedStimuli.length > 0) {
+        setStimuli(loadedStimuli);
+        setInputLocation(loadedStimuli[0].location);
+        setDurationMs(Math.round((1000 * loadedStimuli[0].signal.length) / SAMPLE_RATE_HZ));
+        setStatus(`Loaded session: ${loadedStimuli.length} input${loadedStimuli.length === 1 ? "" : "s"}`);
+      } else {
+        setStatus("Loaded session settings; no signal samples were present in this JSON");
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
   }
 
   async function handleWavFile(file: File | null) {
@@ -392,6 +480,7 @@ function App() {
           `Rendered ${stimuli.length} input${stimuli.length === 1 ? "" : "s"}: ` +
             `${response.samples} samples, ${displayedQuantityShortLabel(projection)}`,
         );
+        flashSurfaceResponse();
       } catch (error) {
         if (renderTokenRef.current === token) {
           setStatus(error instanceof Error ? error.message : String(error));
@@ -473,169 +562,137 @@ function App() {
             {controlsCollapsed ? null : (
               <div className="control-panel-body">
                 <div className="control-group">
-            <label title="Choose the SkinSource limb recording and impulse-response set.">
-              Upper-limb recording
-              <select
-                value={model}
-                onChange={(event) => setModel(Number(event.target.value))}
-                title="Choose the SkinSource limb recording and impulse-response set."
-              >
-                {appData?.manifest.models.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    Limb {entry.id} · {entry.sex === "M" ? "male" : "female"}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label title="Choose the scalar quantity displayed on maps and plots.">
-              Displayed quantity
-              <select
-                value={projection}
-                onChange={(event) => setProjection(event.target.value as ProjectionMode)}
-                title="Choose the scalar quantity displayed on maps and plots."
-              >
-                {DISPLAYED_QUANTITIES.map((quantity) => (
-                  <option key={quantity.value} value={quantity.value} title={quantity.hint}>
-                    {quantity.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label title="Choose the hand contact site for the next input signal.">
-              Input contact location
-              <select
-                value={inputLocation}
-                onChange={(event) => setInputLocation(Number(event.target.value))}
-                title="Choose the hand contact site for the next input signal."
-              >
-                {appData?.manifest.inputLocations.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.id} · {entry.contactType}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label title="Choose the stimulus waveform for the next assignment.">
-              Stimulus signal
-              <select
-                value={signalKind}
-                onChange={(event) => setSignalKind(event.target.value as SignalKind)}
-                title="Choose the stimulus waveform for the next assignment."
-              >
-                <option value="sinusoid">Sinusoid</option>
-                <option value="impulse">Impulse</option>
-                <option value="tap">Tap</option>
-                <option value="noise">White noise</option>
-                <option value="wav">WAV file</option>
-              </select>
-            </label>
-            {signalKind === "wav" ? (
-              <label title="Import a local mono or multichannel WAV file; it is mixed to mono and resampled to 1300 Hz.">
-                WAV file
-                <input
-                  type="file"
-                  accept=".wav,audio/wav,audio/wave,audio/x-wav"
-                  onChange={(event) => void handleWavFile(event.currentTarget.files?.[0] ?? null)}
-                  title="Import a local mono or multichannel WAV file; it is mixed to mono and resampled to 1300 Hz."
-                />
-                <span className="field-note">{wavStatus}</span>
-              </label>
-            ) : null}
-            {signalKind === "sinusoid" ? (
-              <RangeField
-                label="Carrier frequency"
-                value={frequencyHz}
-                unit="Hz"
-                min={25}
-                max={600}
-                step={1}
-                onChange={setFrequencyHz}
-                title="Sinusoidal carrier frequency in hertz."
-              />
-            ) : null}
-            {signalKind === "noise" ? (
-              <label title="Repeatable seed for white-noise generation.">
-                Seed
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={seed}
-                  onChange={(event) => setSeed(Number(event.target.value))}
-                  title="Repeatable seed for white-noise generation."
-                />
-              </label>
-            ) : null}
-            {signalKind !== "wav" ? (
-              <RangeField
-                label="Stimulus duration"
-                value={durationMs}
-                unit="ms"
-                min={30}
-                max={4000}
-                step={10}
-                onChange={setDurationMs}
-                title="Stimulus duration; the response also includes the impulse-response tail."
-              />
-            ) : (
-              <label title="Duration is set from the decoded WAV signal.">
-                WAV duration
-                <input type="text" value={`${durationMs} ms`} readOnly />
-              </label>
-            )}
-            <RangeField
-              label="Input amplitude gain"
-              value={targetAmplitude}
-              unit="m/s²"
-              min={0}
-              max={5}
-              step={0.1}
-              onChange={setTargetAmplitude}
-              title="Scale the input acceleration before SkinSource superposition."
-            />
-            <div className="control-divider" />
-            <RangeField
-              label="Surface scale floor"
-              value={colorMinDb}
-              unit="dB"
-              min={-80}
-              max={-5}
-              step={1}
-              onChange={(value) => setColorMinDb(Math.min(value, colorMaxDb - 1))}
-              title="Lower normalized RMS acceleration value mapped to the bottom of the colorbar."
-            />
-            <RangeField
-              label="Surface scale ceiling"
-              value={colorMaxDb}
-              unit="dB"
-              min={-30}
-              max={0}
-              step={1}
-              onChange={(value) => setColorMaxDb(Math.max(value, colorMinDb + 1))}
-              title="Upper normalized RMS acceleration value mapped to the top of the colorbar."
-            />
-            <div className="input-action-row">
-              <button
-                className="action-button"
-                type="button"
-                onClick={() => addStimulus("add")}
-                disabled={!ready}
-                title="Add this stimulus to the simulation input list."
-              >
-                <Plus size={13} aria-hidden="true" />
-                Add input
-              </button>
-              <button
-                className="action-button subtle"
-                type="button"
-                onClick={() => addStimulus("replace")}
-                disabled={!ready}
-                title="Replace existing stimuli at this input location with the current stimulus."
-              >
-                <RefreshCw size={13} aria-hidden="true" />
-                Replace
-              </button>
-            </div>
+                  <h2>Input controls</h2>
+                  <label title="Choose the SkinSource limb recording and impulse-response set.">
+                    Upper-limb recording
+                    <select
+                      value={model}
+                      onChange={(event) => setModel(Number(event.target.value))}
+                      title="Choose the SkinSource limb recording and impulse-response set."
+                    >
+                      {appData?.manifest.models.map((entry) => (
+                        <option key={entry.id} value={entry.id}>
+                          Limb {entry.id} · {entry.sex === "M" ? "male" : "female"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label title="Choose the hand contact site for the next input signal.">
+                    Input contact location
+                    <select
+                      value={inputLocation}
+                      onChange={(event) => setInputLocation(Number(event.target.value))}
+                      title="Choose the hand contact site for the next input signal."
+                    >
+                      {appData?.manifest.inputLocations.map((entry) => (
+                        <option key={entry.id} value={entry.id}>
+                          {entry.id} · {entry.contactType}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label title="Choose the stimulus waveform for the next input signal.">
+                    Stimulus signal
+                    <select
+                      value={signalKind}
+                      onChange={(event) => setSignalKind(event.target.value as SignalKind)}
+                      title="Choose the stimulus waveform for the next input signal."
+                    >
+                      <option value="sinusoid">Sinusoid</option>
+                      <option value="impulse">Impulse</option>
+                      <option value="tap">Tap</option>
+                      <option value="noise">White noise</option>
+                      <option value="wav">WAV file</option>
+                    </select>
+                  </label>
+                  {signalKind === "wav" ? (
+                    <label title="Import a local mono or multichannel WAV file; it is mixed to mono and resampled to 1300 Hz.">
+                      WAV file
+                      <input
+                        type="file"
+                        accept=".wav,audio/wav,audio/wave,audio/x-wav"
+                        onChange={(event) =>
+                          void handleWavFile(event.currentTarget.files?.[0] ?? null)
+                        }
+                        title="Import a local mono or multichannel WAV file; it is mixed to mono and resampled to 1300 Hz."
+                      />
+                      <span className="field-note">{wavStatus}</span>
+                    </label>
+                  ) : null}
+                  {signalKind === "sinusoid" ? (
+                    <RangeField
+                      label="Carrier frequency"
+                      value={frequencyHz}
+                      unit="Hz"
+                      min={25}
+                      max={600}
+                      step={1}
+                      onChange={setFrequencyHz}
+                      title="Sinusoidal carrier frequency in hertz."
+                    />
+                  ) : null}
+                  {signalKind === "noise" ? (
+                    <label title="Repeatable seed for white-noise generation.">
+                      Seed
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={seed}
+                        onChange={(event) => setSeed(Number(event.target.value))}
+                        title="Repeatable seed for white-noise generation."
+                      />
+                    </label>
+                  ) : null}
+                  {signalKind !== "wav" ? (
+                    <RangeField
+                      label="Stimulus duration"
+                      value={durationMs}
+                      unit="ms"
+                      min={30}
+                      max={4000}
+                      step={10}
+                      onChange={setDurationMs}
+                      title="Stimulus duration; the response also includes the impulse-response tail."
+                    />
+                  ) : (
+                    <label title="Duration is set from the decoded WAV signal.">
+                      WAV duration
+                      <input type="text" value={`${durationMs} ms`} readOnly />
+                    </label>
+                  )}
+                  <RangeField
+                    label="Input amplitude gain"
+                    value={targetAmplitude}
+                    unit="m/s²"
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    onChange={setTargetAmplitude}
+                    title="Scale the input acceleration before SkinSource superposition."
+                  />
+                  <div className="input-action-row">
+                    <button
+                      className="action-button"
+                      type="button"
+                      onClick={() => addStimulus("add")}
+                      disabled={!ready}
+                      title="Add this stimulus to the simulation input list."
+                    >
+                      <Plus size={13} aria-hidden="true" />
+                      Add input
+                    </button>
+                    <button
+                      className="action-button subtle"
+                      type="button"
+                      onClick={() => addStimulus("replace")}
+                      disabled={!ready}
+                      title="Replace existing stimuli at this input location with the current stimulus."
+                    >
+                      <RefreshCw size={13} aria-hidden="true" />
+                      Replace
+                    </button>
+                  </div>
                 </div>
 
                 <div className="control-group">
@@ -677,7 +734,52 @@ function App() {
                 </div>
 
                 <div className="control-group">
-                  <h2>Downloads</h2>
+                  <h2>Output controls</h2>
+                  <label title="Choose the scalar quantity displayed on maps and plots.">
+                    Displayed quantity
+                    <select
+                      value={projection}
+                      onChange={(event) => setProjection(event.target.value as ProjectionMode)}
+                      title="Choose the scalar quantity displayed on maps and plots."
+                    >
+                      {DISPLAYED_QUANTITIES.map((quantity) => (
+                        <option key={quantity.value} value={quantity.value} title={quantity.hint}>
+                          {quantity.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <RangePairField
+                    label="Surface scale"
+                    minValue={colorMinDb}
+                    maxValue={colorMaxDb}
+                    unit="dB"
+                    min={-80}
+                    max={0}
+                    step={1}
+                    onChange={(minDb, maxDb) => {
+                      setColorMinDb(Math.min(minDb, maxDb - 1));
+                      setColorMaxDb(Math.max(maxDb, minDb + 1));
+                    }}
+                    title="Set the normalized RMS acceleration colorbar range."
+                  />
+                </div>
+
+                <div className="control-group">
+                  <h2>Session and downloads</h2>
+                  <label className="file-action-button" title="Load a SkinSource session JSON file.">
+                    <Upload size={13} aria-hidden="true" />
+                    Load session
+                    <input
+                      type="file"
+                      accept="application/json,.json"
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] ?? null;
+                        event.currentTarget.value = "";
+                        void handleSessionFile(file);
+                      }}
+                    />
+                  </label>
             <ExportView
               appData={appData}
               projected={projected}
@@ -691,6 +793,7 @@ function App() {
               modelScale={modelScale}
               projection={projection}
               surfaceMode={surfaceMode}
+              showInterpolatedSensors={showInterpolatedSensors}
               stimuli={stimuli}
               colorMinDb={colorMinDb}
               colorMaxDb={colorMaxDb}
@@ -722,6 +825,7 @@ function App() {
               onSurfaceModeChange={setSurfaceMode}
               values={rmsDb}
               selected={selectedOutputs}
+              flash={surfaceFlash}
               onSelect={selectOutput}
             />
           </div>
@@ -729,7 +833,7 @@ function App() {
           <section className="plot-panel">
             <header className="panel-title-row">
               <h2>
-                <span>Time domain</span>
+                <span>Time</span>
                 <span>
                   {displayedQuantityShortLabel(projection)} · q(t), acceleration in m/s²
                 </span>
@@ -745,31 +849,59 @@ function App() {
           <section className="plot-panel">
             <header className="panel-title-row">
               <h2>
-                <span>Frequency domain</span>
+                <span>Frequency</span>
                 <span>
                   One-sided |FFT(q)|; magnitude is in acceleration units before normalization
                 </span>
               </h2>
+              <div className="axis-toggle-row" aria-label="Frequency plot axis scale">
+                <button
+                  type="button"
+                  className={spectrumLogX ? "active" : ""}
+                  onClick={() => setSpectrumLogX((current) => !current)}
+                  title="Toggle logarithmic frequency axis."
+                >
+                  x log
+                </button>
+                <button
+                  type="button"
+                  className={spectrumLogY ? "active" : ""}
+                  onClick={() => setSpectrumLogY((current) => !current)}
+                  title="Toggle logarithmic magnitude axis."
+                >
+                  y log
+                </button>
+              </div>
             </header>
-            <SpectrumView spectra={selectedSpectra} selectedOutputs={selectedOutputs} />
+            <SpectrumView
+              spectra={selectedSpectra}
+              selectedOutputs={selectedOutputs}
+              logX={spectrumLogX}
+              logY={spectrumLogY}
+            />
           </section>
 
         </section>
       </section>
       <footer className="app-footer">
-        <span>
-          N. Tummala et al., “SkinSource: A Dataset of Whole-Arm Skin Vibrations for Tactile Rendering”, IEEE Haptics Symposium 2024 ·{" "}
+        <span className="paper-reference">
+          N. Tummala et al.,{" "}
           <a
             href="https://doi.org/10.1109/HAPTICS59260.2024.10520852"
             target="_blank"
             rel="noreferrer"
           >
-            DOI
+            “SkinSource: A Dataset of Whole-Arm Skin Vibrations for Tactile Rendering”
+          </a>
+          , IEEE Haptics Symp. 2024 ·{" "}
+          <a href="https://github.com/neelitummala/skinsource" target="_blank" rel="noreferrer">
+            GitHub
           </a>
         </span>
-        <span>
-          <a href="https://github.com/neelitummala/skinsource" target="_blank" rel="noreferrer">
-            SkinSource on GitHub
+        <span className="contact-reference">
+          Contact: Yon Visell, UC Santa Barbara,{" "}
+          <a href="https://www.re-touch-lab.com" target="_blank" rel="noreferrer">
+            www.re-touch-lab.com
           </a>
         </span>
       </footer>
@@ -817,6 +949,76 @@ function RangeField({
   );
 }
 
+function RangePairField({
+  label,
+  minValue,
+  maxValue,
+  unit,
+  min,
+  max,
+  step,
+  onChange,
+  title,
+}: {
+  label: string;
+  minValue: number;
+  maxValue: number;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (minValue: number, maxValue: number) => void;
+  title: string;
+}) {
+  const low = Math.min(minValue, maxValue - step);
+  const high = Math.max(maxValue, minValue + step);
+  const start = ((low - min) / (max - min)) * 100;
+  const end = ((high - min) / (max - min)) * 100;
+  return (
+    <label
+      className="range-field range-pair-field"
+      title={title}
+      style={
+        {
+          "--range-start": `${start}%`,
+          "--range-end": `${end}%`,
+        } as React.CSSProperties
+      }
+    >
+      <span className="range-label">
+        {label}
+        <strong>
+          {formatControlValue(low, step)} to {formatControlValue(high, step)} {unit}
+        </strong>
+      </span>
+      <span className="range-pair-control">
+        <input
+          type="range"
+          min={min}
+          max={max - step}
+          step={step}
+          value={low}
+          onChange={(event) =>
+            onChange(Math.min(Number(event.target.value), high - step), high)
+          }
+          aria-label={`${label} lower bound`}
+        />
+        <input
+          type="range"
+          min={min + step}
+          max={max}
+          step={step}
+          value={high}
+          onChange={(event) =>
+            onChange(low, Math.max(Number(event.target.value), low + step))
+          }
+          aria-label={`${label} upper bound`}
+        />
+      </span>
+    </label>
+  );
+}
+
 function InputMap({
   selected,
   activeLocations,
@@ -833,31 +1035,49 @@ function InputMap({
         <span>click to select</span>
       </header>
       <div className="input-image-stage">
-        <img src={INPUT_LOCATION_IMAGE_URL} alt="Numbered SkinSource input locations" />
+        <svg
+          className="input-image-svg"
+          viewBox={`0 0 ${INPUT_IMAGE_WIDTH} ${INPUT_IMAGE_HEIGHT}`}
+          role="img"
+          aria-label="Numbered SkinSource input locations"
+        >
+          <image
+            href={INPUT_LOCATION_IMAGE_URL}
+            width={INPUT_IMAGE_WIDTH}
+            height={INPUT_IMAGE_HEIGHT}
+            preserveAspectRatio="xMidYMid meet"
+          />
         {Object.entries(INPUT_IMAGE_POINTS).map(([key, point]) => {
           const id = Number(key);
           const active = activeLocations.includes(id);
           return (
-            <button
+            <g
               key={id}
-              type="button"
               className={
                 id === selected
-                  ? "input-marker selected"
+                  ? "input-marker-svg selected"
                   : active
-                    ? "input-marker active"
-                    : "input-marker"
+                    ? "input-marker-svg active"
+                    : "input-marker-svg"
               }
-              style={{
-                left: `${(100 * point.x) / INPUT_IMAGE_WIDTH}%`,
-                top: `${(100 * point.y) / INPUT_IMAGE_HEIGHT}%`,
-              }}
               onClick={() => onSelect(id)}
-              title={`Input location ${id}: click to use for the next stimulus`}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(id);
+                }
+              }}
+              role="button"
+              tabIndex={0}
               aria-label={`Input location ${id}`}
-            />
+            >
+              <title>{`Input location ${id}: click to use for the next stimulus`}</title>
+              <circle className="input-marker-hit" cx={point.x} cy={point.y} r={24} />
+              <circle className="input-marker-ring" cx={point.x} cy={point.y} r={15.5} />
+            </g>
           );
         })}
+        </svg>
       </div>
     </section>
   );
@@ -876,6 +1096,7 @@ function OutputMap({
   onSurfaceModeChange,
   values,
   selected,
+  flash,
   onSelect,
 }: {
   geometry: VisualizationGeometry | null;
@@ -890,6 +1111,7 @@ function OutputMap({
   onSurfaceModeChange: (mode: SurfaceMode) => void;
   values: Float32Array | null;
   selected: number[];
+  flash: boolean;
   onSelect: (location: number, additive: boolean) => void;
 }) {
   const vertices = (geometry?.surfaceVertices ?? []).map(([x, y]) => [
@@ -922,7 +1144,7 @@ function OutputMap({
       : `${selected.slice(0, 4).join(", ")} +${selected.length - 4}`;
   const showOutputMarkers = surfaceMode === "sensors" || showInterpolatedSensors;
   return (
-    <section className="map-panel output-map">
+    <section className={flash ? "map-panel output-map render-updated" : "map-panel output-map"}>
       <header className="surface-header">
         <div>
           <h2>Surface Response</h2>
@@ -1152,12 +1374,16 @@ function TraceView({
 function SpectrumView({
   spectra,
   selectedOutputs,
+  logX,
+  logY,
 }: {
   spectra: Array<{ output: number; spectrum: Spectrum }> | null;
   selectedOutputs: number[];
+  logX: boolean;
+  logY: boolean;
 }) {
   if (!spectra || spectra.length === 0) {
-    return <EmptyView title="No frequency-domain response yet" detail="Add an input to inspect |FFT(q)|." />;
+    return <EmptyView title="No frequency response yet" detail="Add an input to inspect |FFT(q)|." />;
   }
   const yRange = positiveRange(
     spectra.flatMap(({ spectrum }) => Array.from(spectrum.magnitudes)),
@@ -1169,7 +1395,7 @@ function SpectrumView({
         {spectra.map(({ output, spectrum }) => (
           <Chart
             key={output}
-            title={`Output ${output} · ${spectrum.fftLength}-point FFT`}
+            title={`Output ${output}`}
             seriesLabel="|FFT(q)|"
             xUnit="Hz"
             yUnit="m/s²"
@@ -1177,6 +1403,8 @@ function SpectrumView({
             y={spectrum.magnitudes}
             height={selectedOutputs.length === 1 ? 150 : 112}
             yRange={yRange}
+            xLog={logX}
+            yLog={logY}
           />
         ))}
         </div>
@@ -1198,6 +1426,7 @@ function ExportView({
   modelScale,
   projection,
   surfaceMode,
+  showInterpolatedSensors,
   stimuli,
   colorMinDb,
   colorMaxDb,
@@ -1215,6 +1444,7 @@ function ExportView({
   modelScale: number;
   projection: ProjectionMode;
   surfaceMode: SurfaceMode;
+  showInterpolatedSensors: boolean;
   stimuli: AssignedStimulus[];
   colorMinDb: number;
   colorMaxDb: number;
@@ -1301,9 +1531,17 @@ function ExportView({
               "application/json",
               JSON.stringify(
                 {
+                  sessionVersion: 2,
+                  app: "SkinSource",
                   model,
                   displayedQuantity: projection,
                   displayedQuantityLabel: displayedQuantityShortLabel(projection),
+                  surfaceMode,
+                  showInterpolatedSensors,
+                  colorScale: {
+                    minDb: colorMinDb,
+                    maxDb: colorMaxDb,
+                  },
                   selectedOutput,
                   selectedOutputs,
                   sampleRateHz: projected.sampleRateHz,
@@ -1313,6 +1551,7 @@ function ExportView({
                     label: stimulus.label,
                     targetAmplitude: stimulus.targetAmplitude,
                     samples: stimulus.signal.length,
+                    signal: Array.from(stimulus.signal),
                   })),
                 },
                 null,
@@ -1320,10 +1559,10 @@ function ExportView({
               ),
             )
           }
-          title="Download enough configuration metadata to reproduce this render."
+          title="Save a self-contained session JSON that can be loaded back into the app."
         >
           <Download size={13} aria-hidden="true" />
-          Session JSON
+          Save Session JSON
         </button>
         <button
           type="button"
@@ -1393,6 +1632,8 @@ function Chart({
   y,
   height = 140,
   yRange,
+  xLog = false,
+  yLog = false,
 }: {
   title: string;
   seriesLabel: string;
@@ -1402,25 +1643,41 @@ function Chart({
   y: Float32Array | Float64Array;
   height?: number;
   yRange?: [number, number];
+  xLog?: boolean;
+  yLog?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!hostRef.current) return;
+    const data = transformChartData(x, y, xLog, yLog);
+    const transformedYRange =
+      yRange && yLog
+        ? transformPositiveRange(yRange)
+        : yRange;
     const chart = new uPlot(
       {
         width: hostRef.current.clientWidth || 720,
         height,
-        scales: { x: { time: false }, y: yRange ? { range: () => yRange } : {} },
+        scales: {
+          x: { time: false },
+          y: transformedYRange ? { range: () => transformedYRange } : {},
+        },
         axes: [
           {
             stroke: "#aab5c2",
-            grid: { stroke: "rgba(255,255,255,0.08)" },
-            values: (_u, vals) => vals.map((value) => `${formatAxisValue(value)} ${xUnit}`),
+            grid: { stroke: "rgba(255,255,255,0.045)" },
+            values: (_u, vals) =>
+              vals.map((value) =>
+                `${formatAxisValue(xLog ? 10 ** value : value)} ${xUnit}`,
+              ),
           },
           {
             stroke: "#aab5c2",
-            grid: { stroke: "rgba(255,255,255,0.08)" },
-            values: (_u, vals) => vals.map((value) => `${formatAxisValue(value)} ${yUnit}`),
+            grid: { stroke: "rgba(255,255,255,0.045)" },
+            values: (_u, vals) =>
+              vals.map((value) =>
+                `${formatAxisValue(yLog ? 10 ** value : value)} ${yUnit}`,
+              ),
           },
         ],
         cursor: {
@@ -1436,7 +1693,7 @@ function Chart({
           },
         ],
       },
-      [Array.from(x), Array.from(y)],
+      data,
       hostRef.current,
     );
     const resize = () => chart.setSize({ width: hostRef.current?.clientWidth || 720, height });
@@ -1445,7 +1702,7 @@ function Chart({
       window.removeEventListener("resize", resize);
       chart.destroy();
     };
-  }, [seriesLabel, xUnit, yUnit, x, y, height, yRange]);
+  }, [seriesLabel, xUnit, yUnit, x, y, height, yRange, xLog, yLog]);
   return (
     <div className="chart-frame">
       <div className="chart-label">{title}</div>
@@ -1487,6 +1744,34 @@ function positiveRange(values: number[]): [number, number] {
     if (Number.isFinite(value)) max = Math.max(max, value);
   }
   return [0, max > 0 ? max * 1.08 : 1];
+}
+
+function transformChartData(
+  x: Float32Array | Float64Array,
+  y: Float32Array | Float64Array,
+  xLog: boolean,
+  yLog: boolean,
+): [number[], number[]] {
+  const nextX: number[] = [];
+  const nextY: number[] = [];
+  const count = Math.min(x.length, y.length);
+  for (let index = 0; index < count; index += 1) {
+    const rawX = x[index];
+    const rawY = y[index];
+    if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) continue;
+    if ((xLog && rawX <= 0) || (yLog && rawY <= 0)) continue;
+    nextX.push(xLog ? Math.log10(rawX) : rawX);
+    nextY.push(yLog ? Math.log10(rawY) : rawY);
+  }
+  return [nextX, nextY];
+}
+
+function transformPositiveRange(range: [number, number]): [number, number] | undefined {
+  const low = range[0] > 0 ? range[0] : Number.NaN;
+  const high = range[1] > 0 ? range[1] : Number.NaN;
+  if (!Number.isFinite(high)) return undefined;
+  const nextLow = Number.isFinite(low) ? low : high / 1000;
+  return [Math.log10(Math.max(nextLow, Number.MIN_VALUE)), Math.log10(high)];
 }
 
 function formatAxisValue(value: number): string {
@@ -1968,6 +2253,42 @@ function surfaceColorbarSvg(
     <text x="${textX}" y="${y + fontSize * 0.4}" fill="rgba(245,247,250,.94)" font-family="Inter, Arial, sans-serif" font-size="${fontSize}" text-anchor="end">${maxDb} dB</text>
     <text x="${textX}" y="${y + barHeight}" fill="rgba(245,247,250,.94)" font-family="Inter, Arial, sans-serif" font-size="${fontSize}" text-anchor="end">${minDb} dB</text>
   </g>`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const next = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(next) ? next : null;
+}
+
+function boundedInteger(value: unknown, min: number, max: number): number | null {
+  const next = toFiniteNumber(value);
+  if (next === null) return null;
+  const rounded = Math.round(next);
+  if (rounded < min || rounded > max) return null;
+  return rounded;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function toNumberArray(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => toFiniteNumber(entry))
+    .filter((entry): entry is number => entry !== null);
+}
+
+function isProjectionMode(value: unknown): value is ProjectionMode {
+  return DISPLAYED_QUANTITIES.some((quantity) => quantity.value === value);
+}
+
+function isSurfaceMode(value: unknown): value is SurfaceMode {
+  return value === "sensors" || value === "interpolated";
 }
 
 function displayedQuantityLabel(mode: ProjectionMode): string {

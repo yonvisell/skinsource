@@ -5,12 +5,13 @@ SkinSourceSim is a static browser workbench for the SkinSource dataset and toolb
 ## What the app does
 
 - Select one of the SkinSource upper-limb datasets.
-- Assign generated stimuli or imported WAV signals to numbered input locations on the hand.
-- Specify multiple input stimuli at once with compact batch rows.
+- Add or replace generated stimuli or imported WAV signals at numbered input locations on the hand.
+- Build multi-input simulations from the compact simulation-input list.
 - Render output acceleration quantities at dorsal sensor locations.
-- View the RMS surface response as measured sensor values or as an interpolated MATLAB-style surface fill.
-- Compare selected output points in time-domain and frequency-domain strips.
-- Export time-domain CSV, frequency-domain CSV, RMS surface CSV, session JSON, surface PNG, and short surface WebM video.
+- View the RMS surface response as an interpolated MATLAB-style surface fill or measured sensor values.
+- Compare selected output points in time and frequency strips, including optional log-scaled frequency axes.
+- Save and reload self-contained session JSON files.
+- Export time-domain CSV, frequency-domain CSV, RMS surface CSV, surface PNG, and short surface WebM video.
 
 The browser implementation keeps the dataset local to the static site and uses portable JavaScript signal-processing routines. No MATLAB installation is required for app use; MATLAB is used during development to validate numerical agreement with the original toolbox.
 
