@@ -581,6 +581,17 @@ input[type="range"]::-moz-range-thumb {
   line-height: 1.25;
 }
 
+.selection-hint {
+  display: grid;
+  gap: 1px;
+  text-align: right;
+}
+
+.selection-hint span + span {
+  color: #95a1af;
+  font-size: 10px;
+}
+
 .surface-header {
   align-items: flex-start;
 }

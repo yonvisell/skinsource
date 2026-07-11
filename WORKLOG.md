@@ -711,3 +711,8 @@ GitHub publication check:
 Remaining notes:
 
 - `new/` remains untracked intake material.
+
+### Minor UI Hint Update
+
+- Added `shift-click to add` below both `click to select` hints.
+- Input-location shift-click now adds the currently configured stimulus at the clicked input location, matching the hint.

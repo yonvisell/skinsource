@@ -301,7 +301,7 @@ function App() {
     });
   }
 
-  function makePendingStimulus(): AssignedStimulus | null {
+  function makePendingStimulus(location = inputLocation): AssignedStimulus | null {
     const signal = buildSignal();
     if (!signal) {
       setStatus("Choose a WAV file before adding a WAV input");
@@ -316,20 +316,20 @@ function App() {
             ? wavFileName ?? "WAV"
             : signalKind;
     return {
-      id: `${inputLocation}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      location: inputLocation,
+      id: `${location}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      location,
       label,
       signal,
       targetAmplitude,
     };
   }
 
-  function addStimulus(mode: "add" | "replace") {
-    const stimulus = makePendingStimulus();
+  function addStimulus(mode: "add" | "replace", location = inputLocation) {
+    const stimulus = makePendingStimulus(location);
     if (!stimulus) return;
     setStimuli((current) =>
       mode === "replace"
-        ? [...current.filter((item) => item.location !== inputLocation), stimulus]
+        ? [...current.filter((item) => item.location !== location), stimulus]
         : [...current, stimulus],
     );
     setStatus(
@@ -810,7 +810,10 @@ function App() {
             <InputMap
               selected={inputLocation}
               activeLocations={stimuli.map((item) => item.location)}
-              onSelect={setInputLocation}
+              onSelect={(location, additive) => {
+                setInputLocation(location);
+                if (additive) addStimulus("add", location);
+              }}
             />
             <OutputMap
               geometry={appData?.geometry ?? null}
@@ -1026,13 +1029,16 @@ function InputMap({
 }: {
   selected: number;
   activeLocations: number[];
-  onSelect: (location: number) => void;
+  onSelect: (location: number, additive: boolean) => void;
 }) {
   return (
     <section className="map-panel compact-map input-map">
       <header>
         <h2>Input Locations</h2>
-        <span>click to select</span>
+        <span className="selection-hint">
+          <span>click to select</span>
+          <span>shift-click to add</span>
+        </span>
       </header>
       <div className="input-image-stage">
         <svg
@@ -1060,11 +1066,11 @@ function InputMap({
                     ? "input-marker-svg active"
                     : "input-marker-svg"
               }
-              onClick={() => onSelect(id)}
+              onClick={(event) => onSelect(id, event.shiftKey || event.altKey || event.metaKey)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  onSelect(id);
+                  onSelect(id, event.shiftKey || event.altKey || event.metaKey);
                 }
               }}
               role="button"
@@ -1148,8 +1154,9 @@ function OutputMap({
       <header className="surface-header">
         <div>
           <h2>Surface Response</h2>
-          <span>
-            click to select · outputs {selectionLabel}
+          <span className="selection-hint">
+            <span>click to select · outputs {selectionLabel}</span>
+            <span>shift-click to add</span>
           </span>
         </div>
         <div className="surface-tools">
