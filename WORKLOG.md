@@ -669,10 +669,11 @@ Changes:
 - Renamed visible plot headings to `Time` and `Frequency`.
 - Reduced surface sensor-number labels and plot `Output NN` labels.
 - Lightened major plot grid lines.
-- Made the paper citation bold in the footer, converted the paper title itself to the DOI link, shortened the GitHub label, and added bold lower-right contact information.
+- Made the paper citation bold in the footer, converted the corrected shortened paper title itself to the DOI link, shortened the GitHub label, and added bold lower-right contact information.
 - Reordered the controls into input controls, simulation inputs, output controls, then session/downloads.
 - Added a subtle Surface Response border flash after successful automatic renders.
 - Updated root and in-app README text to remove the old batch-row workflow and mention session load/log axes.
+- Added `.github/workflows/pages.yml` so a pushed GitHub repository can deploy the self-contained Vite build to GitHub Pages.
 
 Verification:
 
@@ -696,6 +697,16 @@ Browser automation:
 - Confirmed both frequency log-axis toggles enter the active state.
 - Confirmed synthetic session JSON load restores model `2`, displayed quantity `z`, hidden interpolated sensors, and one loaded input.
 - Captured visual screenshot: `tmp/skinsourcesim-revision-desktop-cdp.png`.
+
+GitHub publication check:
+
+- No GitHub remote is configured for this local repository.
+- `gh` is not installed.
+- No `GITHUB_TOKEN` or `GH_TOKEN` is present in the environment.
+- `git credential fill` did not return a GitHub credential.
+- SSH authentication to `git@github.com:yonvisell/skinsource.git` and `git@github.com:yonvisell/yonvisell.github.io.git` failed with `Permission denied (publickey)`.
+- The GitHub connector exposed repository-content tools but no repository-creation or Pages-configuration tool in this session.
+- Result: app is prepared for GitHub Pages, but creating/pushing the new GitHub repository was blocked by missing usable GitHub write credentials/tooling.
 
 Remaining notes:
 

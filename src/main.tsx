@@ -891,7 +891,7 @@ function App() {
             target="_blank"
             rel="noreferrer"
           >
-            “SkinSource: A Dataset of Whole-Arm Skin Vibrations for Tactile Rendering”
+            “SkinSource: A Data-Driven Toolbox for Predicting Touch-Elicited Vibrations...”
           </a>
           , IEEE Haptics Symp. 2024 ·{" "}
           <a href="https://github.com/neelitummala/skinsource" target="_blank" rel="noreferrer">

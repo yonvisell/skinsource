@@ -17,6 +17,6 @@ The browser implementation keeps the dataset local to the static site and uses p
 
 ## References
 
-N. Tummala et al., "SkinSource: A Dataset of Whole-Arm Skin Vibrations for Tactile Rendering", IEEE Haptics Symposium 2024. DOI: https://doi.org/10.1109/HAPTICS59260.2024.10520852
+N. Tummala et al., "SkinSource: A Data-Driven Toolbox for Predicting Touch-Elicited Vibrations...", IEEE Haptics Symp. 2024. DOI: https://doi.org/10.1109/HAPTICS59260.2024.10520852
 
 Original toolbox: https://github.com/neelitummala/skinsource
