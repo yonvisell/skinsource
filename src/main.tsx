@@ -66,6 +66,7 @@ import type {
 } from "./lib/types";
 
 type SurfaceMode = "sensors" | "interpolated";
+type PlotLayout = "stack" | "overlay";
 
 interface AppData {
   manifest: SkinSourceManifest;
@@ -115,7 +116,18 @@ const DISPLAYED_QUANTITIES: Array<{
 
 const INPUT_LOCATION_IMAGE_URL = assetUrl("assets/stimulation-locations.png");
 const SENSOR_INSET_IMAGE_URL = assetUrl("assets/hand-sensors-inset.jpg");
-const APP_README_URL = assetUrl("README.md");
+const APP_README_URL = assetUrl("readme.html");
+
+const OUTPUT_COLORS = [
+  "#63e6de",
+  "#ffd166",
+  "#ff7b72",
+  "#77a8ff",
+  "#d995ff",
+  "#7cdb8a",
+  "#ff9f5a",
+  "#f78fb3",
+];
 
 const INPUT_IMAGE_WIDTH = 635;
 const INPUT_IMAGE_HEIGHT = 1000;
@@ -148,7 +160,7 @@ function App() {
   const [preload, setPreload] = useState({ loaded: 0, total: 80 });
   const [model, setModel] = useState(1);
   const [inputLocation, setInputLocation] = useState(7);
-  const [selectedOutputs, setSelectedOutputs] = useState<number[]>([20]);
+  const [selectedOutputs, setSelectedOutputs] = useState<number[]>([29, 52]);
   const [signalKind, setSignalKind] = useState<SignalKind>("sinusoid");
   const [durationMs, setDurationMs] = useState(250);
   const [frequencyHz, setFrequencyHz] = useState(100);
@@ -157,7 +169,7 @@ function App() {
   const [wavSignal, setWavSignal] = useState<Float32Array | null>(null);
   const [wavFileName, setWavFileName] = useState<string | null>(null);
   const [wavStatus, setWavStatus] = useState("No WAV loaded");
-  const [projection, setProjection] = useState<ProjectionMode>("mag");
+  const [projection, setProjection] = useState<ProjectionMode>("z");
   const [stimuli, setStimuli] = useState<AssignedStimulus[]>([]);
   const [projected, setProjected] = useState<ProjectedVibrations | null>(null);
   const [rmsDb, setRmsDb] = useState<Float32Array | null>(null);
@@ -168,7 +180,10 @@ function App() {
   const [interpolationAsset, setInterpolationAsset] =
     useState<SurfaceInterpolationAsset | null>(null);
   const [isRendering, setIsRendering] = useState(false);
-  const [controlsCollapsed, setControlsCollapsed] = useState(false);
+  const [controlsCollapsed, setControlsCollapsed] = useState(() =>
+    window.matchMedia("(max-width: 560px)").matches,
+  );
+  const [plotLayout, setPlotLayout] = useState<PlotLayout>("stack");
   const [surfaceFlash, setSurfaceFlash] = useState(false);
   const [spectrumLogX, setSpectrumLogX] = useState(false);
   const [spectrumLogY, setSpectrumLogY] = useState(false);
@@ -257,7 +272,7 @@ function App() {
     }, 680);
   }
 
-  const selectedOutput = selectedOutputs[selectedOutputs.length - 1] ?? 20;
+  const selectedOutput = selectedOutputs[selectedOutputs.length - 1] ?? 29;
   const selectedTraces = useMemo(() => {
     if (!projected) return null;
     return selectedOutputs.map((output) => ({
@@ -361,6 +376,7 @@ function App() {
       }
 
       if (isSurfaceMode(session.surfaceMode)) setSurfaceMode(session.surfaceMode);
+      if (isPlotLayout(session.plotLayout)) setPlotLayout(session.plotLayout);
       if (typeof session.showInterpolatedSensors === "boolean") {
         setShowInterpolatedSensors(session.showInterpolatedSensors);
       }
@@ -503,7 +519,7 @@ function App() {
         <div className="brand">
           <Activity aria-hidden="true" size={22} />
           <div>
-            <h1>SkinSource</h1>
+            <h1>SkinSource 2.0</h1>
             <p>Data-driven toolbox for predicting dynamic tactile signals in the hand and arm</p>
           </div>
         </div>
@@ -546,6 +562,7 @@ function App() {
               type="button"
               onClick={() => setControlsCollapsed((current) => !current)}
               title={controlsCollapsed ? "Show controls" : "Hide controls"}
+              aria-label={controlsCollapsed ? "Show controls" : "Hide controls"}
               aria-expanded={!controlsCollapsed}
             >
               {controlsCollapsed ? (
@@ -554,7 +571,7 @@ function App() {
                 <PanelLeftClose size={18} aria-hidden="true" />
               )}
               {controlsCollapsed ? (
-                <span className="sr-only">Show controls</span>
+                <span className="collapsed-control-label">Show controls</span>
               ) : (
                 <span>Controls</span>
               )}
@@ -562,7 +579,7 @@ function App() {
             {controlsCollapsed ? null : (
               <div className="control-panel-body">
                 <div className="control-group">
-                  <h2>Input controls</h2>
+                  <h2>Add 1 or more input signals</h2>
                   <label title="Choose the SkinSource limb recording and impulse-response set.">
                     Upper-limb recording
                     <select
@@ -695,9 +712,9 @@ function App() {
                   </div>
                 </div>
 
-                <div className="control-group">
+                <div className="control-group current-inputs-group">
                   <div className="control-group-title">
-                    <h2>Simulation inputs</h2>
+                    <h2>Current input signals</h2>
                     {isRendering ? (
                       <span className="rendering-pill">
                         <Loader2 className="spin" size={12} aria-hidden="true" />
@@ -733,22 +750,47 @@ function App() {
             </div>
                 </div>
 
-                <div className="control-group">
-                  <h2>Output controls</h2>
-                  <label title="Choose the scalar quantity displayed on maps and plots.">
-                    Displayed quantity
-                    <select
-                      value={projection}
-                      onChange={(event) => setProjection(event.target.value as ProjectionMode)}
-                      title="Choose the scalar quantity displayed on maps and plots."
-                    >
-                      {DISPLAYED_QUANTITIES.map((quantity) => (
-                        <option key={quantity.value} value={quantity.value} title={quantity.hint}>
-                          {quantity.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div className="control-group output-controls-group">
+                  <h2>SkinSource Outputs</h2>
+                  <p className="render-summary">
+                    {projected
+                      ? `Current response: limb ${model} · ${projected.samples} samples at ${projected.sampleRateHz} Hz · ${selectedOutputs.length} output${selectedOutputs.length === 1 ? "" : "s"} selected`
+                      : "Add an input signal to calculate the response."}
+                  </p>
+                  <select
+                    className="quantity-select"
+                    value={projection}
+                    onChange={(event) => setProjection(event.target.value as ProjectionMode)}
+                    title="Choose the acceleration quantity shown on the surface and in both plots."
+                    aria-label="Acceleration quantity shown in the outputs"
+                  >
+                    {DISPLAYED_QUANTITIES.map((quantity) => (
+                      <option key={quantity.value} value={quantity.value} title={quantity.hint}>
+                        {quantity.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="plot-layout-control">
+                    <span>Plot layout</span>
+                    <div className="segmented-control" aria-label="Multiple-output plot layout">
+                      <button
+                        type="button"
+                        className={plotLayout === "stack" ? "active" : ""}
+                        onClick={() => setPlotLayout("stack")}
+                        title="Show each selected output in a compact row with a shared amplitude scale."
+                      >
+                        Stack
+                      </button>
+                      <button
+                        type="button"
+                        className={plotLayout === "overlay" ? "active" : ""}
+                        onClick={() => setPlotLayout("overlay")}
+                        title="Draw all selected outputs together on one shared set of axes."
+                      >
+                        Overlay
+                      </button>
+                    </div>
+                  </div>
                   <RangePairField
                     label="Surface scale"
                     minValue={colorMinDb}
@@ -765,21 +807,8 @@ function App() {
                   />
                 </div>
 
-                <div className="control-group">
-                  <h2>Session and downloads</h2>
-                  <label className="file-action-button" title="Load a SkinSource session JSON file.">
-                    <Upload size={13} aria-hidden="true" />
-                    Load session
-                    <input
-                      type="file"
-                      accept="application/json,.json"
-                      onChange={(event) => {
-                        const file = event.currentTarget.files?.[0] ?? null;
-                        event.currentTarget.value = "";
-                        void handleSessionFile(file);
-                      }}
-                    />
-                  </label>
+                <div className="control-group export-controls-group">
+                  <h2>Export, load, and save</h2>
             <ExportView
               appData={appData}
               projected={projected}
@@ -792,12 +821,14 @@ function App() {
               interpolationAsset={interpolationAsset}
               modelScale={modelScale}
               projection={projection}
+              plotLayout={plotLayout}
               surfaceMode={surfaceMode}
               showInterpolatedSensors={showInterpolatedSensors}
               stimuli={stimuli}
               colorMinDb={colorMinDb}
               colorMaxDb={colorMaxDb}
               onStatus={setStatus}
+              onLoadSessionFile={(file) => void handleSessionFile(file)}
             />
                 </div>
               </div>
@@ -834,46 +865,47 @@ function App() {
           </div>
 
           <section className="plot-panel">
-            <header className="panel-title-row">
-              <h2>
-                <span>Time</span>
-                <span>
-                  {displayedQuantityShortLabel(projection)} · q(t), acceleration in m/s²
-                </span>
-              </h2>
+            <header className="panel-title-row plot-panel-header">
+              <h2>Time</h2>
+              <span className="plot-description">
+                {displayedQuantityShortLabel(projection)} · {displayedQuantityEquation(projection).expression} (m/s²)
+              </span>
+              <OutputLegend outputs={selectedOutputs} />
             </header>
             <TraceView
               projected={projected}
               traces={selectedTraces}
               selectedOutputs={selectedOutputs}
+              layout={plotLayout}
             />
           </section>
 
           <section className="plot-panel">
-            <header className="panel-title-row">
-              <h2>
-                <span>Frequency</span>
-                <span>
-                  One-sided |FFT(q)|; magnitude is in acceleration units before normalization
-                </span>
-              </h2>
-              <div className="axis-toggle-row" aria-label="Frequency plot axis scale">
-                <button
-                  type="button"
-                  className={spectrumLogX ? "active" : ""}
-                  onClick={() => setSpectrumLogX((current) => !current)}
-                  title="Toggle logarithmic frequency axis."
-                >
-                  x log
-                </button>
-                <button
-                  type="button"
-                  className={spectrumLogY ? "active" : ""}
-                  onClick={() => setSpectrumLogY((current) => !current)}
-                  title="Toggle logarithmic magnitude axis."
-                >
-                  y log
-                </button>
+            <header className="panel-title-row plot-panel-header">
+              <h2>Frequency</h2>
+              <span className="plot-description">
+                One-sided acceleration amplitude spectrum, |FFT(q)| (m/s²)
+              </span>
+              <div className="plot-header-tools">
+                <OutputLegend outputs={selectedOutputs} />
+                <div className="axis-toggle-row" aria-label="Frequency plot axis scale">
+                  <button
+                    type="button"
+                    className={spectrumLogX ? "active" : ""}
+                    onClick={() => setSpectrumLogX((current) => !current)}
+                    title="Toggle logarithmic frequency axis."
+                  >
+                    x log
+                  </button>
+                  <button
+                    type="button"
+                    className={spectrumLogY ? "active" : ""}
+                    onClick={() => setSpectrumLogY((current) => !current)}
+                    title="Toggle logarithmic magnitude axis."
+                  >
+                    y log
+                  </button>
+                </div>
               </div>
             </header>
             <SpectrumView
@@ -881,6 +913,7 @@ function App() {
               selectedOutputs={selectedOutputs}
               logX={spectrumLogX}
               logY={spectrumLogY}
+              layout={plotLayout}
             />
           </section>
 
@@ -1034,7 +1067,7 @@ function InputMap({
   return (
     <section className="map-panel compact-map input-map">
       <header>
-        <h2>Input Locations</h2>
+        <h2>Input locations</h2>
         <span className="selection-hint">
           <span>click to select</span>
           <span>shift-click to add</span>
@@ -1153,7 +1186,7 @@ function OutputMap({
     <section className={flash ? "map-panel output-map render-updated" : "map-panel output-map"}>
       <header className="surface-header">
         <div>
-          <h2>Surface Response</h2>
+          <h2>Surface response</h2>
           <span className="selection-hint">
             <span>click to select · outputs {selectionLabel}</span>
             <span>shift-click to add</span>
@@ -1310,6 +1343,20 @@ function ColorBar({
   );
 }
 
+function OutputLegend({ outputs }: { outputs: number[] }) {
+  return (
+    <div className="output-legend" aria-label={`Selected outputs ${outputs.join(", ")}`}>
+      <span>Output</span>
+      {outputs.map((output, index) => (
+        <React.Fragment key={output}>
+          {index > 0 ? <span aria-hidden="true">,</span> : null}
+          <strong style={{ color: outputColor(index) }}>{output}</strong>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
 function interpolatedSurfaceImageUrl(
   asset: SurfaceInterpolationAsset,
   values: Float32Array,
@@ -1345,31 +1392,51 @@ function TraceView({
   projected,
   traces,
   selectedOutputs,
+  layout,
 }: {
   projected: ProjectedVibrations | null;
   traces: Array<{ output: number; trace: Float32Array }> | null;
   selectedOutputs: number[];
+  layout: PlotLayout;
 }) {
   if (!projected || !traces || traces.length === 0) {
     return <EmptyView title="No time-domain response yet" detail="Add an input to inspect q(t)." />;
   }
   const timeMs = makeTimeMs(projected.samples, projected.sampleRateHz);
   const yRange = symmetricRange(traces.flatMap(({ trace }) => Array.from(trace)));
+  if (layout === "overlay") {
+    return (
+      <OverlayChart
+        seriesLabel="q(t)"
+        xUnit="ms"
+        yUnit="m/s²"
+        x={timeMs}
+        series={traces.map(({ output, trace }, index) => ({
+          label: `Output ${output}`,
+          y: trace,
+          color: outputColor(index),
+        }))}
+        height={158}
+        yRange={yRange}
+      />
+    );
+  }
   return (
     <section className="analysis-stack">
       <div className="plot-scroll">
         <div className="small-multiple-stack">
-        {traces.map(({ output, trace }) => (
+        {traces.map(({ output, trace }, index) => (
           <Chart
             key={output}
-            title={`Output ${output}`}
             seriesLabel="q(t)"
             xUnit="ms"
             yUnit="m/s²"
             x={timeMs}
             y={trace}
-            height={selectedOutputs.length === 1 ? 150 : 112}
+            height={selectedOutputs.length === 1 ? 150 : index === traces.length - 1 ? 108 : 84}
             yRange={yRange}
+            color={outputColor(index)}
+            showXAxis={selectedOutputs.length === 1 || index === traces.length - 1}
           />
         ))}
         </div>
@@ -1383,11 +1450,13 @@ function SpectrumView({
   selectedOutputs,
   logX,
   logY,
+  layout,
 }: {
   spectra: Array<{ output: number; spectrum: Spectrum }> | null;
   selectedOutputs: number[];
   logX: boolean;
   logY: boolean;
+  layout: PlotLayout;
 }) {
   if (!spectra || spectra.length === 0) {
     return <EmptyView title="No frequency response yet" detail="Add an input to inspect |FFT(q)|." />;
@@ -1395,23 +1464,43 @@ function SpectrumView({
   const yRange = positiveRange(
     spectra.flatMap(({ spectrum }) => Array.from(spectrum.magnitudes)),
   );
+  if (layout === "overlay") {
+    return (
+      <OverlayChart
+        seriesLabel="|FFT(q)|"
+        xUnit="Hz"
+        yUnit="m/s²"
+        x={spectra[0].spectrum.frequenciesHz}
+        series={spectra.map(({ output, spectrum }, index) => ({
+          label: `Output ${output}`,
+          y: spectrum.magnitudes,
+          color: outputColor(index),
+        }))}
+        height={158}
+        yRange={yRange}
+        xLog={logX}
+        yLog={logY}
+      />
+    );
+  }
   return (
     <section className="analysis-stack">
       <div className="plot-scroll">
         <div className="small-multiple-stack">
-        {spectra.map(({ output, spectrum }) => (
+        {spectra.map(({ output, spectrum }, index) => (
           <Chart
             key={output}
-            title={`Output ${output}`}
             seriesLabel="|FFT(q)|"
             xUnit="Hz"
             yUnit="m/s²"
             x={spectrum.frequenciesHz}
             y={spectrum.magnitudes}
-            height={selectedOutputs.length === 1 ? 150 : 112}
+            height={selectedOutputs.length === 1 ? 150 : index === spectra.length - 1 ? 108 : 84}
             yRange={yRange}
             xLog={logX}
             yLog={logY}
+            color={outputColor(index)}
+            showXAxis={selectedOutputs.length === 1 || index === spectra.length - 1}
           />
         ))}
         </div>
@@ -1432,12 +1521,14 @@ function ExportView({
   interpolationAsset,
   modelScale,
   projection,
+  plotLayout,
   surfaceMode,
   showInterpolatedSensors,
   stimuli,
   colorMinDb,
   colorMaxDb,
   onStatus,
+  onLoadSessionFile,
 }: {
   appData: AppData | null;
   projected: ProjectedVibrations | null;
@@ -1450,35 +1541,32 @@ function ExportView({
   interpolationAsset: SurfaceInterpolationAsset | null;
   modelScale: number;
   projection: ProjectionMode;
+  plotLayout: PlotLayout;
   surfaceMode: SurfaceMode;
   showInterpolatedSensors: boolean;
   stimuli: AssignedStimulus[];
   colorMinDb: number;
   colorMaxDb: number;
   onStatus: (status: string) => void;
+  onLoadSessionFile: (file: File | null) => void;
 }) {
-  if (!projected || !rmsDb) {
-    return <EmptyView title="No downloads yet" detail="Add an input first." />;
-  }
-
   const baseName = `skinsourcesim-model${model}-output${selectedOutput}`;
   return (
     <section className="export-stack">
-      <p>
-        Current render: limb {model}, {projected.samples} samples at {projected.sampleRateHz} Hz,
-        primary output {selectedOutput}, {selectedOutputs.length} selected output
-        {selectedOutputs.length === 1 ? "" : "s"}.
-      </p>
+      {!projected || !rmsDb ? (
+        <p className="export-note">Response exports become available after an input is added.</p>
+      ) : null}
       <div className="export-grid">
         <button
           type="button"
           onClick={() =>
-            downloadText(
+            projected && downloadText(
               `${baseName}-time-domain.csv`,
               "text/csv",
               selectedTimeCsv(projected, selectedOutputs),
             )
           }
+          disabled={!projected}
           title="Download q(t) for all selected outputs as CSV."
         >
           <Download size={13} aria-hidden="true" />
@@ -1487,7 +1575,7 @@ function ExportView({
         <button
           type="button"
           onClick={() =>
-            downloadBlob(
+            projected && downloadBlob(
               `${baseName}-time-domain.wav`,
               encodeMonoWavPcm16(
                 traceAtOutput(projected, selectedOutput - 1),
@@ -1495,6 +1583,7 @@ function ExportView({
               ),
             )
           }
+          disabled={!projected}
           title="Download the primary selected output as a peak-normalized mono WAV."
         >
           <Download size={13} aria-hidden="true" />
@@ -1519,12 +1608,13 @@ function ExportView({
         <button
           type="button"
           onClick={() =>
-            downloadText(
+            rmsDb && downloadText(
               `skinsourcesim-model${model}-surface-rms.csv`,
               "text/csv",
               rmsCsv(rmsDb),
             )
           }
+          disabled={!rmsDb}
           title="Download RMS surface values in dB relative to the rendered maximum."
         >
           <Download size={13} aria-hidden="true" />
@@ -1533,17 +1623,18 @@ function ExportView({
         <button
           type="button"
           onClick={() =>
-            downloadText(
+            projected && downloadText(
               `skinsourcesim-model${model}-session.json`,
               "application/json",
               JSON.stringify(
                 {
                   sessionVersion: 2,
-                  app: "SkinSource",
+                  app: "SkinSource 2.0",
                   model,
                   displayedQuantity: projection,
                   displayedQuantityLabel: displayedQuantityShortLabel(projection),
                   surfaceMode,
+                  plotLayout,
                   showInterpolatedSensors,
                   colorScale: {
                     minDb: colorMinDb,
@@ -1566,6 +1657,7 @@ function ExportView({
               ),
             )
           }
+          disabled={!projected}
           title="Save a self-contained session JSON that can be loaded back into the app."
         >
           <Download size={13} aria-hidden="true" />
@@ -1576,6 +1668,7 @@ function ExportView({
           onClick={() =>
             appData &&
             colorMap &&
+            rmsDb &&
             void downloadSurfacePng(
               appData.geometry,
               rmsDb,
@@ -1585,7 +1678,7 @@ function ExportView({
               `skinsourcesim-model${model}-surface.png`,
             )
           }
-          disabled={!appData || !colorMap}
+          disabled={!appData || !colorMap || !rmsDb}
           title="Download a black-background surface map PNG without selected-output highlighting."
         >
           <Download size={13} aria-hidden="true" />
@@ -1596,6 +1689,7 @@ function ExportView({
           onClick={() =>
             appData &&
             colorMap &&
+            projected &&
             void downloadSurfaceWebm({
               geometry: appData.geometry,
               projected,
@@ -1610,12 +1704,25 @@ function ExportView({
               onStatus,
             })
           }
-          disabled={!appData || !colorMap}
+          disabled={!appData || !colorMap || !projected}
           title="Render and download a short WebM movie showing the surface response over time."
         >
           <Film size={13} aria-hidden="true" />
           Movie WebM
         </button>
+        <label className="file-action-button" title="Load a self-contained SkinSource session JSON file.">
+          <Upload size={13} aria-hidden="true" />
+          Load session
+          <input
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0] ?? null;
+              event.currentTarget.value = "";
+              onLoadSessionFile(file);
+            }}
+          />
+        </label>
       </div>
     </section>
   );
@@ -1631,7 +1738,6 @@ function EmptyView({ title, detail }: { title: string; detail: string }) {
 }
 
 function Chart({
-  title,
   seriesLabel,
   xUnit,
   yUnit,
@@ -1641,8 +1747,9 @@ function Chart({
   yRange,
   xLog = false,
   yLog = false,
+  color = OUTPUT_COLORS[0],
+  showXAxis = true,
 }: {
-  title: string;
   seriesLabel: string;
   xUnit: string;
   yUnit: string;
@@ -1652,6 +1759,8 @@ function Chart({
   yRange?: [number, number];
   xLog?: boolean;
   yLog?: boolean;
+  color?: string;
+  showXAxis?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -1671,6 +1780,7 @@ function Chart({
         },
         axes: [
           {
+            show: showXAxis,
             stroke: "#aab5c2",
             grid: { stroke: "rgba(255,255,255,0.045)" },
             values: (_u, vals) =>
@@ -1695,7 +1805,7 @@ function Chart({
           {},
           {
             label: seriesLabel,
-            stroke: "#74d8d1",
+            stroke: color,
             width: 1.6,
           },
         ],
@@ -1709,10 +1819,91 @@ function Chart({
       window.removeEventListener("resize", resize);
       chart.destroy();
     };
-  }, [seriesLabel, xUnit, yUnit, x, y, height, yRange, xLog, yLog]);
+  }, [seriesLabel, xUnit, yUnit, x, y, height, yRange, xLog, yLog, color, showXAxis]);
   return (
     <div className="chart-frame">
-      <div className="chart-label">{title}</div>
+      <div className="chart-host" ref={hostRef} />
+    </div>
+  );
+}
+
+function OverlayChart({
+  seriesLabel,
+  xUnit,
+  yUnit,
+  x,
+  series,
+  height,
+  yRange,
+  xLog = false,
+  yLog = false,
+}: {
+  seriesLabel: string;
+  xUnit: string;
+  yUnit: string;
+  x: Float32Array | Float64Array;
+  series: Array<{
+    label: string;
+    y: Float32Array | Float64Array;
+    color: string;
+  }>;
+  height: number;
+  yRange?: [number, number];
+  xLog?: boolean;
+  yLog?: boolean;
+}) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!hostRef.current) return;
+    const data = transformMultiChartData(x, series.map(({ y }) => y), xLog, yLog);
+    const transformedYRange = yRange && yLog ? transformPositiveRange(yRange) : yRange;
+    const chart = new uPlot(
+      {
+        width: hostRef.current.clientWidth || 720,
+        height,
+        scales: {
+          x: { time: false },
+          y: transformedYRange ? { range: () => transformedYRange } : {},
+        },
+        axes: [
+          {
+            stroke: "#aab5c2",
+            grid: { stroke: "rgba(255,255,255,0.045)" },
+            values: (_u, vals) =>
+              vals.map((value) => `${formatAxisValue(xLog ? 10 ** value : value)} ${xUnit}`),
+          },
+          {
+            stroke: "#aab5c2",
+            grid: { stroke: "rgba(255,255,255,0.045)" },
+            values: (_u, vals) =>
+              vals.map((value) => `${formatAxisValue(yLog ? 10 ** value : value)} ${yUnit}`),
+          },
+        ],
+        cursor: {
+          drag: { x: true, y: false },
+          focus: { prox: -1 },
+        },
+        series: [
+          {},
+          ...series.map(({ label, color }) => ({
+            label: `${label} ${seriesLabel}`,
+            stroke: color,
+            width: 1.55,
+          })),
+        ],
+      },
+      data,
+      hostRef.current,
+    );
+    const resize = () => chart.setSize({ width: hostRef.current?.clientWidth || 720, height });
+    window.addEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      chart.destroy();
+    };
+  }, [seriesLabel, xUnit, yUnit, x, series, height, yRange, xLog, yLog]);
+  return (
+    <div className="chart-frame overlay-chart">
       <div className="chart-host" ref={hostRef} />
     </div>
   );
@@ -1773,6 +1964,33 @@ function transformChartData(
   return [nextX, nextY];
 }
 
+function transformMultiChartData(
+  x: Float32Array | Float64Array,
+  values: Array<Float32Array | Float64Array>,
+  xLog: boolean,
+  yLog: boolean,
+): uPlot.AlignedData {
+  const nextX: number[] = [];
+  const nextValues = values.map(() => [] as Array<number | null>);
+  const count = Math.min(x.length, ...values.map((value) => value.length));
+  for (let index = 0; index < count; index += 1) {
+    const rawX = x[index];
+    if (!Number.isFinite(rawX) || (xLog && rawX <= 0)) continue;
+    nextX.push(xLog ? Math.log10(rawX) : rawX);
+    values.forEach((value, seriesIndex) => {
+      const rawY = value[index];
+      nextValues[seriesIndex].push(
+        Number.isFinite(rawY) && (!yLog || rawY > 0)
+          ? yLog
+            ? Math.log10(rawY)
+            : rawY
+          : null,
+      );
+    });
+  }
+  return [nextX, ...nextValues];
+}
+
 function transformPositiveRange(range: [number, number]): [number, number] | undefined {
   const low = range[0] > 0 ? range[0] : Number.NaN;
   const high = range[1] > 0 ? range[1] : Number.NaN;
@@ -1794,6 +2012,10 @@ function formatControlValue(value: number, step: number): string {
   if (step >= 1) return value.toFixed(0);
   if (step >= 0.1) return value.toFixed(1);
   return value.toString();
+}
+
+function outputColor(index: number): string {
+  return OUTPUT_COLORS[index % OUTPUT_COLORS.length];
 }
 
 function selectedTimeCsv(projected: ProjectedVibrations, selectedOutputs: number[]): string {
@@ -2298,6 +2520,10 @@ function isSurfaceMode(value: unknown): value is SurfaceMode {
   return value === "sensors" || value === "interpolated";
 }
 
+function isPlotLayout(value: unknown): value is PlotLayout {
+  return value === "stack" || value === "overlay";
+}
+
 function displayedQuantityLabel(mode: ProjectionMode): string {
   return DISPLAYED_QUANTITIES.find((quantity) => quantity.value === mode)?.label ?? mode;
 }
@@ -2309,30 +2535,30 @@ function displayedQuantityShortLabel(mode: ProjectionMode): string {
 function displayedQuantityEquation(mode: ProjectionMode): { expression: string; note: string } {
   if (mode === "x") {
     return {
-      expression: "q(x,t) = u_x(x,t)",
+      expression: "q(t) = u_x(t)",
       note: "Raw local accelerometer x-axis response.",
     };
   }
   if (mode === "y") {
     return {
-      expression: "q(x,t) = u_y(x,t)",
+      expression: "q(t) = u_y(t)",
       note: "Raw local accelerometer y-axis response.",
     };
   }
   if (mode === "z") {
     return {
-      expression: "q(x,t) = u_z(x,t)",
+      expression: "q(t) = u_z(t)",
       note: "Skin-normal accelerometer-axis response.",
     };
   }
   if (mode === "rms") {
     return {
-      expression: "q(x,t) = u(x,t) dot e_rms(x)",
+      expression: "q(t) = u(t) dot e_rms",
       note: "e_rms is the per-output unit axis from RMS energy across x, y, and z.",
     };
   }
   return {
-    expression: "q(x,t) = sqrt(u_x(x,t)^2 + u_y(x,t)^2 + u_z(x,t)^2)",
+    expression: "q(t) = sqrt(u_x(t)^2 + u_y(t)^2 + u_z(t)^2)",
     note: "Vector magnitude of the three accelerometer axes.",
   };
 }

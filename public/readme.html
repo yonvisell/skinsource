@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Guide to the SkinSource 2.0 browser application." />
+    <title>SkinSource 2.0 | Guide</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #050608;
+        color: #edf3f8;
+        font-synthesis: none;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: #050608;
+        font-size: 15px;
+        line-height: 1.58;
+      }
+
+      main {
+        width: min(820px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 36px 0 60px;
+      }
+
+      header {
+        padding-bottom: 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+      }
+
+      h1, h2, p { margin-top: 0; }
+      h1 { margin-bottom: 8px; font-size: 28px; line-height: 1.15; }
+      h2 { margin: 30px 0 10px; font-size: 17px; }
+      p, li { color: #cbd5df; }
+      ul, ol { padding-left: 22px; }
+      li + li { margin-top: 6px; }
+
+      a {
+        color: #8fc7ff;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      .lede { max-width: 720px; margin-bottom: 18px; font-size: 17px; color: #e1e8ef; }
+      .back-link { display: inline-block; margin-top: 4px; }
+      .equation { color: #f2f6fa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+      footer {
+        margin-top: 38px;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.28);
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>SkinSource 2.0</h1>
+        <p class="lede">A static browser application for predicting dynamic tactile signals in the hand and arm from the SkinSource impulse-response dataset.</p>
+        <a class="back-link" href="./">Return to SkinSource 2.0</a>
+      </header>
+
+      <section>
+        <h2>What the application calculates</h2>
+        <p>SkinSource 2.0 convolves each assigned input acceleration signal with the measured three-axis SkinSource impulse responses, then superposes the resulting responses. The output is acceleration at 72 dorsal hand and forearm locations. All calculations run locally in the browser; no MATLAB installation or data upload is required.</p>
+        <p>The displayed acceleration quantity can be the skin-normal component, either local tangential component, the vector magnitude, or the per-location axis carrying the greatest RMS energy. The surface map reports RMS acceleration in decibels relative to the maximum value in the current response.</p>
+      </section>
+
+      <section>
+        <h2>Basic workflow</h2>
+        <ol>
+          <li>Choose an upper-limb recording, input contact location, and input signal.</li>
+          <li>Set the signal parameters and select <strong>Add input</strong>. Use <strong>Replace</strong> to replace signals already assigned to that contact location.</li>
+          <li>Add further input signals as needed. The response updates automatically.</li>
+          <li>Select dorsal output locations on the surface response. Shift-click adds or removes outputs from the selection.</li>
+          <li>Compare selected outputs in stacked or overlaid time and frequency plots.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Signals and views</h2>
+        <ul>
+          <li>Generated inputs include sinusoids, impulses, taps, and repeatable white noise.</li>
+          <li>WAV files are mixed to mono, resampled to 1300 Hz when necessary, and peak-normalized before application of the input amplitude gain.</li>
+          <li>The interpolated surface uses a portable, precomputed natural-neighbor interpolation operator matching the MATLAB visualization geometry.</li>
+          <li>Time plots show the selected acceleration quantity <span class="equation">q(t)</span> in <span class="equation">m/s²</span>.</li>
+          <li>Frequency plots show the one-sided amplitude spectrum <span class="equation">|FFT(q)|</span> in <span class="equation">m/s²</span>, with optional logarithmic frequency and magnitude axes.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Saving and exporting</h2>
+        <p>CSV exports contain selected time responses, the primary selected output spectrum, or the complete RMS surface. The primary output can also be exported as a peak-normalized WAV file. Surface images use a black background and omit selected-output highlighting. Short surface-response movies are exported as WebM files.</p>
+        <p>A session JSON file preserves the input signals, model, displayed quantity, selected outputs, surface settings, and plot layout. Loading that file reconstructs the saved calculation without requiring the original WAV files.</p>
+      </section>
+
+      <section>
+        <h2>Reference</h2>
+        <p>N. Tummala et al., <a href="https://doi.org/10.1109/HAPTICS59260.2024.10520852">“SkinSource: A Data-Driven Toolbox for Predicting Touch-Elicited Vibrations...”</a>, IEEE Haptics Symp. 2024. The original MATLAB toolbox and dataset documentation are available from the <a href="https://github.com/neelitummala/skinsource">SkinSource repository</a>.</p>
+      </section>
+
+      <footer>Contact: Yon Visell, UC Santa Barbara · <a href="https://www.re-touch-lab.com">www.re-touch-lab.com</a></footer>
+    </main>
+  </body>
+</html>

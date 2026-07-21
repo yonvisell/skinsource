@@ -716,3 +716,52 @@ Remaining notes:
 
 - Added `shift-click to add` below both `click to select` hints.
 - Input-location shift-click now adds the currently configured stimulus at the clicked input location, matching the hint.
+
+## 2026-07-21 Revision Pass: Human-Factors and Responsive Plot Layout
+
+Implemented the title, content hierarchy, responsive behavior, and multi-output visualization revision.
+
+Changes:
+
+- Renamed the application and browser title to `SkinSource 2.0`.
+- Replaced the browser-facing Markdown README with a styled, relative-path-safe `public/readme.html`; retained the root Markdown README for repository presentation.
+- Changed defaults to normal acceleration (`z`) and selected outputs 29 and 52.
+- Renamed and regrouped controls as `Add 1 or more input signals`, `Current input signals`, `SkinSource Outputs`, and `Export, load, and save`.
+- Removed the visible `Displayed quantity` label while retaining an accessible name and explanatory mouseover text on the quantity selector.
+- Moved the current-response summary into `SkinSource Outputs`.
+- Integrated session loading as the final item in the two-column export grid and gave response-export actions a consistent subtle blue treatment.
+- Added a shared `Stack`/`Overlay` plot-layout control and persisted it in session JSON.
+- Added consistent, accessible output colors across time and frequency legends and plotted signals.
+- Removed per-chart boxes, compressed stacked plots, shared amplitude ranges, and showed the horizontal axis only on the final stacked row.
+- Centered the time/frequency quantity descriptions and placed compact output legends at the right of each panel header.
+- Clarified the frequency label as a one-sided acceleration amplitude spectrum in `m/s²`.
+- Aligned the input and surface headings, raised the surface hand-photo inset to the vertical midpoint, slightly increased surface-number size, differentiated selection guidance, and removed bold weight from the colorbar title.
+- Lightened panel borders and separators throughout.
+- Corrected the broken intermediate-width control layout: controls now use four columns on small desktops, two on tablets, and one on phones.
+- Constrained the two-map row at intermediate widths to prevent portrait-image intrinsic sizing from expanding it beyond 1300 px.
+- Defaulted controls to collapsed on phone-sized initial loads and exposed a visible `Show controls` action, placing the input map within the first viewport.
+
+Verification:
+
+```bash
+npm run test
+npm run build
+git diff --check
+```
+
+Results:
+
+- Vitest passed: 3 files, 10 tests.
+- Production build passed.
+- No browser console errors or warnings were reported.
+
+Browser interaction and visual checks:
+
+- Confirmed the default quantity is `z`, outputs 29 and 52 are selected on the surface, and both plot legends use matching teal/yellow identities.
+- Added a 100 Hz sinusoid at input 7 and confirmed automatic rendering of 846 samples at 1300 Hz.
+- Confirmed stacked mode creates two compact charts per analysis panel and overlay mode creates one shared chart per panel.
+- At `1440 x 900`, the map row measured 432 px high, both map headings had the same top coordinate, and the inset top was exactly 50% of the surface-stage height.
+- At `1000 x 800`, controls used four equal columns and the corrected map row measured 448 px instead of approximately 1348 px.
+- At `390 x 844`, the initial control panel was collapsed, the input map began at 221 px, and document width remained below the viewport width.
+- Expanded mobile controls successfully into one readable column without horizontal overflow.
+- Opened and visually inspected the static HTML guide at `/readme.html`; it contained five sections and no horizontal overflow.

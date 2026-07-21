@@ -103,9 +103,9 @@ Expected controls:
 Primary analysis views:
 
 - Surface: RMS or selected-time response over the upper limb, defaulting to interpolated mode with sensor mode available
-- Time: selected output-location signals, including multi-output small multiples
-- Frequency: selected output-location spectra with optional log-scaled axes
-- Simulation inputs: compact list of current stimulus inputs
+- Time: selected output-location signals in compact stacked or overlaid layouts
+- Frequency: selected output-location spectra in compact stacked or overlaid layouts, with optional log-scaled axes
+- Current input signals: compact list of assigned stimulus inputs
 - Downloads: data, images, and short video from the rendered response
 
 The main surface, time-domain, and frequency-domain views should remain simultaneously visible when practical. The first implementation keeps persistent context controls and avoids burying core workflow.
@@ -158,3 +158,5 @@ Stimulus input should support quick single-input editing and multi-input constru
 - Time-domain float32 impulse responses are sufficiently precise for browser analysis; validation will quantify tolerances.
 - If exact MATLAB PCA projection parity becomes costly, it can be staged after single-axis, vector magnitude, and RMS-energy projection.
 - The paper is secondary context. GitHub README, Zenodo description, and upstream MATLAB behavior define the practical product contract.
+- The browser-facing guide is a standalone static HTML document so it renders correctly on GitHub Pages without adding vertical weight to the workbench.
+- The default output view uses normal acceleration and selected dorsal outputs 29 and 52.
