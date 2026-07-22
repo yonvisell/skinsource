@@ -62,6 +62,7 @@ import type {
   ProjectedVibrations,
   SkinSourceManifest,
   Spectrum,
+  StimulusSource,
   VisualizationGeometry,
 } from "./lib/types";
 
@@ -154,6 +155,22 @@ const INPUT_IMAGE_POINTS: Record<number, { x: number; y: number }> = {
   20: { x: 261.0, y: 590.3 },
 };
 
+function makeDefaultStimulus(): AssignedStimulus {
+  const source: StimulusSource = {
+    kind: "sinusoid",
+    durationMs: 250,
+    frequencyHz: 100,
+  };
+  return {
+    id: "default-input-7",
+    location: 7,
+    label: stimulusSourceLabel(source),
+    signal: makeSinusoid({ durationMs: 250, frequencyHz: 100, window: "none" }),
+    targetAmplitude: 1,
+    source,
+  };
+}
+
 function App() {
   const [appData, setAppData] = useState<AppData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -170,7 +187,7 @@ function App() {
   const [wavFileName, setWavFileName] = useState<string | null>(null);
   const [wavStatus, setWavStatus] = useState("No WAV loaded");
   const [projection, setProjection] = useState<ProjectionMode>("z");
-  const [stimuli, setStimuli] = useState<AssignedStimulus[]>([]);
+  const [stimuli, setStimuli] = useState<AssignedStimulus[]>(() => [makeDefaultStimulus()]);
   const [projected, setProjected] = useState<ProjectedVibrations | null>(null);
   const [rmsDb, setRmsDb] = useState<Float32Array | null>(null);
   const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>("interpolated");
@@ -183,7 +200,8 @@ function App() {
   const [controlsCollapsed, setControlsCollapsed] = useState(() =>
     window.matchMedia("(max-width: 560px)").matches,
   );
-  const [plotLayout, setPlotLayout] = useState<PlotLayout>("stack");
+  const [plotLayout, setPlotLayout] = useState<PlotLayout>("overlay");
+  const [editingStimulusId, setEditingStimulusId] = useState<string | null>(null);
   const [surfaceFlash, setSurfaceFlash] = useState(false);
   const [spectrumLogX, setSpectrumLogX] = useState(false);
   const [spectrumLogY, setSpectrumLogY] = useState(false);
@@ -305,37 +323,39 @@ function App() {
     });
   }
 
-  function buildSignal(): Float32Array | null {
-    if (signalKind === "wav") {
-      return wavSignal;
-    }
-    return buildGeneratedSignal(signalKind, {
+  function currentStimulusSource(): StimulusSource {
+    return {
+      kind: signalKind,
       durationMs,
-      frequencyHz,
-      seed,
+      frequencyHz: signalKind === "sinusoid" ? frequencyHz : undefined,
+      seed: signalKind === "noise" ? seed : undefined,
+      wavFileName: signalKind === "wav" ? wavFileName ?? undefined : undefined,
+    };
+  }
+
+  function buildSignal(source = currentStimulusSource()): Float32Array | null {
+    if (source.kind === "wav") return wavSignal;
+    return buildGeneratedSignal(source.kind, {
+      durationMs: source.durationMs,
+      frequencyHz: source.frequencyHz ?? frequencyHz,
+      seed: source.seed ?? seed,
     });
   }
 
   function makePendingStimulus(location = inputLocation): AssignedStimulus | null {
-    const signal = buildSignal();
+    const source = currentStimulusSource();
+    const signal = buildSignal(source);
     if (!signal) {
       setStatus("Choose a WAV file before adding a WAV input");
       return null;
     }
-    const label =
-      signalKind === "sinusoid"
-        ? `${frequencyHz} Hz sine`
-        : signalKind === "noise"
-          ? `white noise seed ${seed}`
-          : signalKind === "wav"
-            ? wavFileName ?? "WAV"
-            : signalKind;
     return {
       id: `${location}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       location,
-      label,
+      label: stimulusSourceLabel(source),
       signal,
       targetAmplitude,
+      source,
     };
   }
 
@@ -347,9 +367,90 @@ function App() {
         ? [...current.filter((item) => item.location !== location), stimulus]
         : [...current, stimulus],
     );
+    setEditingStimulusId(null);
     setStatus(
-      `${mode === "replace" ? "Replaced" : "Added"} ${stimulus.label} at input ${inputLocation}`,
+      `${mode === "replace" ? "Replaced" : "Added"} ${stimulus.label} at input ${location}`,
     );
+  }
+
+  function selectStimulusForEditing(stimulus: AssignedStimulus) {
+    const source = stimulus.source ?? sampleBackedSource(stimulus);
+    setEditingStimulusId(stimulus.id);
+    setInputLocation(stimulus.location);
+    setSignalKind(source.kind);
+    setDurationMs(source.durationMs);
+    setFrequencyHz(source.frequencyHz ?? 100);
+    setSeed(source.seed ?? 0);
+    setTargetAmplitude(stimulus.targetAmplitude);
+    if (source.kind === "wav") {
+      setWavSignal(stimulus.signal);
+      setWavFileName(source.wavFileName ?? stimulus.label);
+      setWavStatus(`${source.wavFileName ?? stimulus.label}: stored session signal`);
+    } else {
+      setWavSignal(null);
+      setWavFileName(null);
+      setWavStatus("No WAV loaded");
+    }
+    setStatus(`Editing input signal at Loc ${stimulus.location}`);
+  }
+
+  function commitEditingStimulus(
+    patch: Partial<{
+      location: number;
+      kind: SignalKind;
+      durationMs: number;
+      frequencyHz: number;
+      seed: number;
+      targetAmplitude: number;
+      wavSignal: Float32Array;
+      wavFileName: string;
+    }>,
+  ) {
+    if (!editingStimulusId) return;
+    setStimuli((current) => {
+      let changed = false;
+      const next = current.map((stimulus) => {
+        if (stimulus.id !== editingStimulusId) return stimulus;
+        const previousSource = stimulus.source ?? sampleBackedSource(stimulus);
+        const kind = patch.kind ?? signalKind;
+        const nextSource: StimulusSource = {
+          kind,
+          durationMs: patch.durationMs ?? durationMs,
+          frequencyHz: kind === "sinusoid" ? patch.frequencyHz ?? frequencyHz : undefined,
+          seed: kind === "noise" ? patch.seed ?? seed : undefined,
+          wavFileName:
+            kind === "wav"
+              ? patch.wavFileName ?? wavFileName ?? previousSource.wavFileName
+              : undefined,
+        };
+        const nextLocation = patch.location ?? inputLocation;
+        const nextAmplitude = patch.targetAmplitude ?? targetAmplitude;
+        const sourceChanged = !sameStimulusSource(previousSource, nextSource);
+        const metadataChanged =
+          nextLocation !== stimulus.location || nextAmplitude !== stimulus.targetAmplitude;
+        if (!sourceChanged && !metadataChanged && !patch.wavSignal) return stimulus;
+
+        const nextSignal =
+          kind === "wav"
+            ? patch.wavSignal ?? (previousSource.kind === "wav" ? stimulus.signal : wavSignal)
+            : buildGeneratedSignal(kind, {
+                durationMs: nextSource.durationMs,
+                frequencyHz: nextSource.frequencyHz ?? frequencyHz,
+                seed: nextSource.seed ?? seed,
+              });
+        if (!nextSignal) return stimulus;
+        changed = true;
+        return {
+          ...stimulus,
+          location: nextLocation,
+          label: stimulusSourceLabel(nextSource),
+          signal: nextSignal,
+          targetAmplitude: nextAmplitude,
+          source: nextSource,
+        };
+      });
+      return changed ? next : current;
+    });
   }
 
   async function handleSessionFile(file: File | null) {
@@ -387,16 +488,18 @@ function App() {
             const location = boundedInteger(entry.location, 1, 20);
             const signalValues = toNumberArray(entry.signal ?? entry.signalSamples);
             if (!location || signalValues.length === 0) return [];
+            const label =
+              typeof entry.label === "string" && entry.label.trim()
+                ? entry.label.trim()
+                : "Loaded signal";
             return [
               {
                 id: `session-${Date.now()}-${index}`,
                 location,
-                label:
-                  typeof entry.label === "string" && entry.label.trim()
-                    ? entry.label.trim()
-                    : "Loaded signal",
+                label,
                 signal: Float32Array.from(signalValues),
                 targetAmplitude: toFiniteNumber(entry.targetAmplitude) ?? 1,
+                source: sessionStimulusSource(entry.source, signalValues.length, label),
               },
             ];
           })
@@ -404,6 +507,7 @@ function App() {
 
       if (loadedStimuli.length > 0) {
         setStimuli(loadedStimuli);
+        setEditingStimulusId(null);
         setInputLocation(loadedStimuli[0].location);
         setDurationMs(Math.round((1000 * loadedStimuli[0].signal.length) / SAMPLE_RATE_HZ));
         setStatus(`Loaded session: ${loadedStimuli.length} input${loadedStimuli.length === 1 ? "" : "s"}`);
@@ -420,15 +524,22 @@ function App() {
     setWavStatus(`Loading ${file.name}...`);
     try {
       const decoded = await decodeWavFile(file);
+      const decodedDurationMs = Math.round((1000 * decoded.signal.length) / SAMPLE_RATE_HZ);
       setWavSignal(decoded.signal);
       setWavFileName(file.name);
-      setDurationMs(Math.round((1000 * decoded.signal.length) / SAMPLE_RATE_HZ));
+      setDurationMs(decodedDurationMs);
       setWavStatus(
         `${file.name}: ${decoded.signal.length} samples at ${SAMPLE_RATE_HZ} Hz` +
           (decoded.originalSampleRate === SAMPLE_RATE_HZ
             ? ""
             : `, resampled from ${decoded.originalSampleRate} Hz`),
       );
+      commitEditingStimulus({
+        kind: "wav",
+        durationMs: decodedDurationMs,
+        wavSignal: decoded.signal,
+        wavFileName: file.name,
+      });
       setStatus(`Loaded WAV ${file.name}`);
     } catch (error) {
       setWavSignal(null);
@@ -520,7 +631,7 @@ function App() {
           <Activity aria-hidden="true" size={22} />
           <div>
             <h1>SkinSource 2.0</h1>
-            <p>Data-driven toolbox for predicting dynamic tactile signals in the hand and arm</p>
+            <p>Toolbox predicting dynamic tactile signals in hand, arm. Data-driven. Free.</p>
           </div>
         </div>
         <nav className="top-links" aria-label="Project links">
@@ -598,12 +709,16 @@ function App() {
                     Input contact location
                     <select
                       value={inputLocation}
-                      onChange={(event) => setInputLocation(Number(event.target.value))}
+                      onChange={(event) => {
+                        const location = Number(event.target.value);
+                        setInputLocation(location);
+                        commitEditingStimulus({ location });
+                      }}
                       title="Choose the hand contact site for the next input signal."
                     >
                       {appData?.manifest.inputLocations.map((entry) => (
                         <option key={entry.id} value={entry.id}>
-                          {entry.id} · {entry.contactType}
+                          Loc {entry.id} · {entry.contactType}
                         </option>
                       ))}
                     </select>
@@ -612,7 +727,11 @@ function App() {
                     Stimulus signal
                     <select
                       value={signalKind}
-                      onChange={(event) => setSignalKind(event.target.value as SignalKind)}
+                      onChange={(event) => {
+                        const kind = event.target.value as SignalKind;
+                        setSignalKind(kind);
+                        commitEditingStimulus({ kind });
+                      }}
                       title="Choose the stimulus waveform for the next input signal."
                     >
                       <option value="sinusoid">Sinusoid</option>
@@ -645,6 +764,10 @@ function App() {
                       max={600}
                       step={1}
                       onChange={setFrequencyHz}
+                      onCommit={(value) => {
+                        setFrequencyHz(value);
+                        commitEditingStimulus({ frequencyHz: value });
+                      }}
                       title="Sinusoidal carrier frequency in hertz."
                     />
                   ) : null}
@@ -657,6 +780,14 @@ function App() {
                         step={1}
                         value={seed}
                         onChange={(event) => setSeed(Number(event.target.value))}
+                        onBlur={(event) =>
+                          commitEditingStimulus({ seed: Number(event.currentTarget.value) })
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            commitEditingStimulus({ seed: Number(event.currentTarget.value) });
+                          }
+                        }}
                         title="Repeatable seed for white-noise generation."
                       />
                     </label>
@@ -670,6 +801,10 @@ function App() {
                       max={4000}
                       step={10}
                       onChange={setDurationMs}
+                      onCommit={(value) => {
+                        setDurationMs(value);
+                        commitEditingStimulus({ durationMs: value });
+                      }}
                       title="Stimulus duration; the response also includes the impulse-response tail."
                     />
                   ) : (
@@ -686,6 +821,10 @@ function App() {
                     max={5}
                     step={0.1}
                     onChange={setTargetAmplitude}
+                    onCommit={(value) => {
+                      setTargetAmplitude(value);
+                      commitEditingStimulus({ targetAmplitude: value });
+                    }}
                     title="Scale the input acceleration before SkinSource superposition."
                   />
                   <div className="input-action-row">
@@ -720,6 +859,8 @@ function App() {
                         <Loader2 className="spin" size={12} aria-hidden="true" />
                         Rendering
                       </span>
+                    ) : editingStimulusId ? (
+                      <span className="editing-pill">Editing</span>
                     ) : null}
                   </div>
             <div className="stimulus-list">
@@ -730,16 +871,40 @@ function App() {
                   .slice()
                   .sort((a, b) => a.location - b.location)
                   .map((stimulus) => (
-                    <div className="stimulus-row" key={stimulus.id}>
+                    <div
+                      className={
+                        stimulus.id === editingStimulusId
+                          ? "stimulus-row selected"
+                          : "stimulus-row"
+                      }
+                      key={stimulus.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={stimulus.id === editingStimulusId}
+                      aria-label={`Edit input signal at location ${stimulus.location}`}
+                      title="Select this input signal to edit its settings."
+                      onClick={() => selectStimulusForEditing(stimulus)}
+                      onKeyDown={(event) => {
+                        if (
+                          event.target === event.currentTarget &&
+                          (event.key === "Enter" || event.key === " ")
+                        ) {
+                          event.preventDefault();
+                          selectStimulusForEditing(stimulus);
+                        }
+                      }}
+                    >
                       <span>Loc {stimulus.location}</span>
                       <strong>{stimulus.label}</strong>
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setStimuli((current) =>
                             current.filter((item) => item.id !== stimulus.id),
-                          )
-                        }
+                          );
+                          if (stimulus.id === editingStimulusId) setEditingStimulusId(null);
+                        }}
                         aria-label={`Remove location ${stimulus.location}`}
                       >
                         <Trash2 size={13} aria-hidden="true" />
@@ -843,7 +1008,11 @@ function App() {
               activeLocations={stimuli.map((item) => item.location)}
               onSelect={(location, additive) => {
                 setInputLocation(location);
-                if (additive) addStimulus("add", location);
+                if (additive) {
+                  addStimulus("add", location);
+                } else {
+                  commitEditingStimulus({ location });
+                }
               }}
             />
             <OutputMap
@@ -953,6 +1122,7 @@ function RangeField({
   max,
   step,
   onChange,
+  onCommit,
   title,
 }: {
   label: string;
@@ -962,6 +1132,7 @@ function RangeField({
   max: number;
   step: number;
   onChange: (value: number) => void;
+  onCommit?: (value: number) => void;
   title: string;
 }) {
   return (
@@ -979,6 +1150,9 @@ function RangeField({
         step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
+        onPointerUp={(event) => onCommit?.(Number(event.currentTarget.value))}
+        onKeyUp={(event) => onCommit?.(Number(event.currentTarget.value))}
+        onBlur={(event) => onCommit?.(Number(event.currentTarget.value))}
         title={title}
       />
     </label>
@@ -1188,45 +1362,48 @@ function OutputMap({
         <div>
           <h2>Surface response</h2>
           <span className="selection-hint">
-            <span>click to select · outputs {selectionLabel}</span>
+            <span>click to select</span>
             <span>shift-click to add</span>
           </span>
         </div>
-        <div className="surface-tools">
-          <div className="segmented-control" aria-label="Surface rendering mode">
-            <button
-              type="button"
-              className={surfaceMode === "sensors" ? "active" : ""}
-              onClick={() => onSurfaceModeChange("sensors")}
-              title="Show measured dorsal output locations as colored sensors."
-            >
-              Sensors
-            </button>
-            <button
-              type="button"
-              className={surfaceMode === "interpolated" ? "active" : ""}
-              onClick={() => onSurfaceModeChange("interpolated")}
-              disabled={!interpolationAsset}
-              title="Fill the dorsal surface using the MATLAB natural-neighbor interpolation operator."
-            >
-              Interpolated
-            </button>
+        <div className="surface-header-right">
+          <div className="surface-tools">
+            <div className="segmented-control" aria-label="Surface rendering mode">
+              <button
+                type="button"
+                className={surfaceMode === "sensors" ? "active" : ""}
+                onClick={() => onSurfaceModeChange("sensors")}
+                title="Show measured dorsal output locations as colored sensors."
+              >
+                Sensors
+              </button>
+              <button
+                type="button"
+                className={surfaceMode === "interpolated" ? "active" : ""}
+                onClick={() => onSurfaceModeChange("interpolated")}
+                disabled={!interpolationAsset}
+                title="Fill the dorsal surface using the MATLAB natural-neighbor interpolation operator."
+              >
+                Interpolated
+              </button>
+            </div>
+            {surfaceMode === "interpolated" ? (
+              <label className="inline-check" title="Show or hide output sensor locations on the interpolated surface.">
+                <input
+                  type="checkbox"
+                  checked={showInterpolatedSensors}
+                  onChange={(event) => onShowInterpolatedSensorsChange(event.currentTarget.checked)}
+                />
+                {showInterpolatedSensors ? (
+                  <Eye size={12} aria-hidden="true" />
+                ) : (
+                  <EyeOff size={12} aria-hidden="true" />
+                )}
+                Sensors
+              </label>
+            ) : null}
           </div>
-          {surfaceMode === "interpolated" ? (
-            <label className="inline-check" title="Show or hide output sensor locations on the interpolated surface.">
-              <input
-                type="checkbox"
-                checked={showInterpolatedSensors}
-                onChange={(event) => onShowInterpolatedSensorsChange(event.currentTarget.checked)}
-              />
-              {showInterpolatedSensors ? (
-                <Eye size={12} aria-hidden="true" />
-              ) : (
-                <EyeOff size={12} aria-hidden="true" />
-              )}
-              Sensors
-            </label>
-          ) : null}
+          <span className="selected-output-summary">outputs {selectionLabel}</span>
         </div>
       </header>
       {bounds && colorMap ? (
@@ -1234,7 +1411,7 @@ function OutputMap({
           className="surface-stage"
           title="Click an output point to select it. Shift, Option, or Command-click to add or remove outputs."
         >
-          <svg viewBox={`${bounds.minX - 20} ${bounds.minY - 20} ${bounds.width + 40} ${bounds.height + 40}`}>
+          <svg viewBox={`${bounds.minX - 20} ${bounds.minY - 6} ${bounds.width + 40} ${bounds.height + 12}`}>
             {interpolatedImageUrl && interpolationAsset ? (
               <image
                 href={interpolatedImageUrl}
@@ -1648,6 +1825,7 @@ function ExportView({
                     location: stimulus.location,
                     label: stimulus.label,
                     targetAmplitude: stimulus.targetAmplitude,
+                    source: stimulus.source,
                     samples: stimulus.signal.length,
                     signal: Array.from(stimulus.signal),
                   })),
@@ -1782,6 +1960,7 @@ function Chart({
           {
             show: showXAxis,
             stroke: "#aab5c2",
+            font: "10px Inter, sans-serif",
             grid: { stroke: "rgba(255,255,255,0.045)" },
             values: (_u, vals) =>
               vals.map((value) =>
@@ -1790,6 +1969,7 @@ function Chart({
           },
           {
             stroke: "#aab5c2",
+            font: "10px Inter, sans-serif",
             grid: { stroke: "rgba(255,255,255,0.045)" },
             values: (_u, vals) =>
               vals.map((value) =>
@@ -1868,12 +2048,14 @@ function OverlayChart({
         axes: [
           {
             stroke: "#aab5c2",
+            font: "10px Inter, sans-serif",
             grid: { stroke: "rgba(255,255,255,0.045)" },
             values: (_u, vals) =>
               vals.map((value) => `${formatAxisValue(xLog ? 10 ** value : value)} ${xUnit}`),
           },
           {
             stroke: "#aab5c2",
+            font: "10px Inter, sans-serif",
             grid: { stroke: "rgba(255,255,255,0.045)" },
             values: (_u, vals) =>
               vals.map((value) => `${formatAxisValue(yLog ? 10 ** value : value)} ${yUnit}`),
@@ -2514,6 +2696,67 @@ function toNumberArray(value: unknown): number[] {
 
 function isProjectionMode(value: unknown): value is ProjectionMode {
   return DISPLAYED_QUANTITIES.some((quantity) => quantity.value === value);
+}
+
+function isSignalKind(value: unknown): value is SignalKind {
+  return value === "sinusoid" || value === "impulse" || value === "tap" || value === "noise" || value === "wav";
+}
+
+function stimulusSourceLabel(source: StimulusSource): string {
+  if (source.kind === "sinusoid") return `${source.frequencyHz ?? 100} Hz sine`;
+  if (source.kind === "noise") return `white noise seed ${source.seed ?? 0}`;
+  if (source.kind === "wav") return source.wavFileName ?? "WAV";
+  return source.kind === "impulse" ? "Impulse" : "Tap";
+}
+
+function sampleBackedSource(stimulus: AssignedStimulus): StimulusSource {
+  return {
+    kind: "wav",
+    durationMs: Math.round((1000 * stimulus.signal.length) / SAMPLE_RATE_HZ),
+    wavFileName: stimulus.label,
+  };
+}
+
+function sessionStimulusSource(
+  value: unknown,
+  signalSamples: number,
+  fallbackLabel: string,
+): StimulusSource {
+  if (!isRecord(value) || !isSignalKind(value.kind)) {
+    return {
+      kind: "wav",
+      durationMs: Math.round((1000 * signalSamples) / SAMPLE_RATE_HZ),
+      wavFileName: fallbackLabel,
+    };
+  }
+  const durationMs = toFiniteNumber(value.durationMs);
+  const frequencyHz = toFiniteNumber(value.frequencyHz);
+  const seed = toFiniteNumber(value.seed);
+  return {
+    kind: value.kind,
+    durationMs:
+      durationMs === null
+        ? Math.round((1000 * signalSamples) / SAMPLE_RATE_HZ)
+        : durationMs,
+    frequencyHz: value.kind === "sinusoid" ? frequencyHz ?? 100 : undefined,
+    seed: value.kind === "noise" ? seed ?? 0 : undefined,
+    wavFileName:
+      value.kind === "wav" && typeof value.wavFileName === "string"
+        ? value.wavFileName
+        : value.kind === "wav"
+          ? fallbackLabel
+          : undefined,
+  };
+}
+
+function sameStimulusSource(a: StimulusSource, b: StimulusSource): boolean {
+  return (
+    a.kind === b.kind &&
+    a.durationMs === b.durationMs &&
+    a.frequencyHz === b.frequencyHz &&
+    a.seed === b.seed &&
+    a.wavFileName === b.wavFileName
+  );
 }
 
 function isSurfaceMode(value: unknown): value is SurfaceMode {

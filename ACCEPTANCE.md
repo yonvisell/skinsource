@@ -34,6 +34,8 @@
 - One-sided frequency spectra follow documented normalization and FFT-length rules; if zero-padded browser spectra are used, MATLAB validation uses the same padded length.
 - Numerical comparisons against MATLAB reference outputs pass within documented tolerance for representative examples.
 - Multiple input stimuli can be assembled through compact add/replace controls and a removable simulation-input list without a separate render button.
+- First load includes a 250 ms, 100 Hz sinusoid at Loc 7 so surface, time, frequency, and export views are immediately active.
+- Current input signals can be selected and edited; slider movement does not repeatedly render before release or keyboard completion.
 
 ## UI
 
@@ -73,6 +75,7 @@
 - Time-domain labels expose the selected displayed quantity equation without a separate explanatory subpanel.
 - Multi-output time-domain signals can be shown as stacked small multiples.
 - Multi-output time and frequency signals can be switched between compact stacked and overlaid layouts with consistent output colors.
+- Multi-output plots default to the overlaid layout.
 - Visual orientation, labels, color scaling, and selected-point behavior are verified against MATLAB or upstream reference assets.
 - Session JSON can be saved and loaded to restore view settings and simulation inputs.
 

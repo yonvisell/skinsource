@@ -160,3 +160,5 @@ Stimulus input should support quick single-input editing and multi-input constru
 - The paper is secondary context. GitHub README, Zenodo description, and upstream MATLAB behavior define the practical product contract.
 - The browser-facing guide is a standalone static HTML document so it renders correctly on GitHub Pages without adding vertical weight to the workbench.
 - The default output view uses normal acceleration and selected dorsal outputs 29 and 52.
+- The default plot layout is overlay, with a 250 ms, 100 Hz sinusoid at Loc 7 assigned on first load so all output views are active.
+- Selecting a current input signal restores its editable generator settings; slider changes update the calculation only when the interaction is committed.

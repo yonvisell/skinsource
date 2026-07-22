@@ -48,6 +48,7 @@
       }
 
       .lede { max-width: 720px; margin-bottom: 18px; font-size: 17px; color: #e1e8ef; }
+      .industry-note { max-width: 720px; color: #9edbd7; font-weight: 600; }
       .back-link { display: inline-block; margin-top: 4px; }
       .equation { color: #f2f6fa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
@@ -64,6 +65,7 @@
       <header>
         <h1>SkinSource 2.0</h1>
         <p class="lede">A static browser application for predicting dynamic tactile signals in the hand and arm from the SkinSource impulse-response dataset.</p>
+        <p class="industry-note">Local-first: data and computation remain in the browser. SkinSource 2.0 facilitates rapid haptic validation without requiring new physical experiments.</p>
         <a class="back-link" href="./">Return to SkinSource 2.0</a>
       </header>
 
@@ -76,8 +78,9 @@
       <section>
         <h2>Basic workflow</h2>
         <ol>
-          <li>Choose an upper-limb recording, input contact location, and input signal.</li>
-          <li>Set the signal parameters and select <strong>Add input</strong>. Use <strong>Replace</strong> to replace signals already assigned to that contact location.</li>
+          <li>Inspect the default 100 Hz signal at Loc 7, or choose another upper-limb recording, input contact location, and signal.</li>
+          <li>Select a row under <strong>Current input signals</strong> to edit it. Slider edits are applied to the response when the interaction is released or completed.</li>
+          <li>To create another signal, set its parameters and select <strong>Add input</strong>. Use <strong>Replace</strong> to replace signals already assigned to that contact location.</li>
           <li>Add further input signals as needed. The response updates automatically.</li>
           <li>Select dorsal output locations on the surface response. Shift-click adds or removes outputs from the selection.</li>
           <li>Compare selected outputs in stacked or overlaid time and frequency plots.</li>

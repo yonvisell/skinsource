@@ -765,3 +765,38 @@ Browser interaction and visual checks:
 - At `390 x 844`, the initial control panel was collapsed, the input map began at 221 px, and document width remained below the viewport width.
 - Expanded mobile controls successfully into one readable column without horizontal overflow.
 - Opened and visually inspected the static HTML guide at `/readme.html`; it contained five sections and no horizontal overflow.
+
+## 2026-07-21 Revision Pass: Active Default and Editable Inputs
+
+Implemented the requested density, labeling, and current-input editing refinements.
+
+Changes:
+
+- Added the configured 250 ms, 100 Hz sinusoid at Loc 7 on first load so surface, time, frequency, and export views are immediately active.
+- Changed the default multi-output layout to `Overlay`.
+- Extended assigned signals with backward-compatible source metadata and included it in session JSON.
+- Made current input rows selectable; selection restores location, waveform, duration, frequency or seed, gain, and stored WAV samples.
+- Added selected-row and editing states using the existing light green UI accent.
+- Committed slider edits on pointer release, keyboard completion, or blur rather than continuously recomputing while dragging.
+- Made location and waveform dropdown edits update the selected input immediately and changed location options to `Loc N`.
+- Reduced the output-quantity selector to the standard 11 px control type size.
+- Boxed the current-response summary and differentiated it with a muted green treatment.
+- Changed the subtitle to `Toolbox predicting dynamic tactile signals in hand, arm. Data-driven. Free.`
+- Separated surface selection guidance at upper left from the selected-output summary beneath the upper-right controls.
+- Reduced vertical surface viewBox padding so the limb leaves approximately 4.6 px at the top and bottom of the stage.
+- Shifted the surface inset upward from 50% to 46% of the stage height.
+- Reduced the desktop input-map column by approximately 9% and reassigned that width to the surface panel without distorting its image or hit regions.
+- Reduced plot-axis labels to 10 px and increased frequency log toggles to 10.5 px.
+- Added prominent local-first and rapid experiment-free haptic-validation language to the HTML and repository READMEs.
+
+Browser checks:
+
+- Confirmed first load renders two overlay charts and enables all seven response-export buttons.
+- Confirmed the output quantity selector is 11 px and log-axis buttons are 10.5 px.
+- Confirmed surface outline top and bottom margins are both approximately 4.6 px at `1440 x 900`.
+- Confirmed `click to select` and `shift-click to add` remain upper left while `outputs 29, 52` appears beneath the upper-right surface controls.
+- Confirmed selecting the default row restores Loc 7, sinusoid, 100 Hz, 250 ms, and gain 1.0.
+- Confirmed setting the carrier control to 150 Hz does not render or alter the row before commit; after commit, the row changes to `150 Hz sine` and the response updates.
+- Confirmed changing the selected signal location to Loc 8 updates the row and triggers the surface render indication.
+- Confirmed the revised phone layout has no horizontal overflow and keeps the surface-header controls and guidance separated.
+- Confirmed `/readme.html` shows the local-first validation statement without horizontal overflow.

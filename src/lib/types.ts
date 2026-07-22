@@ -78,6 +78,15 @@ export interface AssignedStimulus {
   label: string;
   signal: Float32Array;
   targetAmplitude: number;
+  source?: StimulusSource;
+}
+
+export interface StimulusSource {
+  kind: "sinusoid" | "impulse" | "tap" | "noise" | "wav";
+  durationMs: number;
+  frequencyHz?: number;
+  seed?: number;
+  wavFileName?: string;
 }
 
 export interface RenderedVibrations {
