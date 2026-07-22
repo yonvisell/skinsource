@@ -143,15 +143,6 @@ p {
   white-space: nowrap;
 }
 
-.status-text {
-  max-width: 100%;
-  overflow: hidden;
-  color: #c4ceda;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .workbench {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
@@ -292,10 +283,7 @@ p {
 }
 
 .render-summary {
-  padding: 5px 6px;
-  border: 1px solid rgba(94, 232, 223, 0.3);
-  border-radius: 5px;
-  background: rgba(94, 232, 223, 0.075);
+  padding: 0 5px;
   color: #a9ded9;
 }
 
@@ -354,6 +342,10 @@ textarea {
   color: #f0f5fa;
   padding: 6px 8px;
   outline: none;
+}
+
+select {
+  background: #0b1014;
 }
 
 textarea {
@@ -518,7 +510,7 @@ input[type="range"]::-moz-range-thumb {
 
 .action-button.subtle {
   border-color: var(--line-soft);
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(72, 102, 136, 0.18);
 }
 
 .stimulus-row button {
@@ -602,7 +594,7 @@ input[type="range"]::-moz-range-thumb {
 
 .analysis-pane {
   display: grid;
-  grid-template-rows: minmax(410px, 48vh) auto auto;
+  grid-template-rows: minmax(410px, 49vh) auto auto;
   gap: 6px;
   min-width: 0;
   max-width: 100%;
@@ -703,7 +695,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 4px;
   padding: 3px 7px;
   color: #c0cad6;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.04);
   font-size: 10.5px;
 }
 
@@ -737,11 +729,11 @@ input[type="range"]::-moz-range-thumb {
 
 .input-image-stage {
   width: auto;
-  height: 100%;
+  height: 85%;
   min-width: 0;
   max-width: 100%;
   max-height: 100%;
-  margin: 0 auto;
+  margin: auto;
   aspect-ratio: 635 / 1000;
 }
 
@@ -1100,7 +1092,7 @@ input[type="range"]::-moz-range-thumb {
   justify-content: space-between;
   align-items: center;
   gap: 8px 14px;
-  padding: 0 2px;
+  padding: 0 2px 4px;
   color: #c3ccd7;
   font-size: 11px;
   line-height: 1.35;
@@ -1133,6 +1125,36 @@ input[type="range"]::-moz-range-thumb {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (min-width: 821px) {
+  .output-map {
+    position: relative;
+    display: block;
+  }
+
+  .output-map .surface-header {
+    position: absolute;
+    z-index: 4;
+    top: 7px;
+    right: 7px;
+    left: 7px;
+    padding-bottom: 0;
+    pointer-events: none;
+  }
+
+  .output-map .surface-tools,
+  .output-map .surface-tools *,
+  .output-map .inline-check {
+    pointer-events: auto;
+  }
+
+  .output-map .surface-stage {
+    position: absolute;
+    inset: 7px;
+    width: auto;
+    height: auto;
   }
 }
 

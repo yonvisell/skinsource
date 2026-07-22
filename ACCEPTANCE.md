@@ -44,7 +44,7 @@
 - UI is dark, compact, responsive, and data-workflow oriented.
 - No `alert()`, `confirm()`, or modal confirmation flows.
 - App title is `SkinSource 2.0`.
-- UI uses clear workflow labels such as `Add 1 or more input signals`, `Current input signals`, `SkinSource Outputs`, and `Export, load, and save`.
+- UI uses clear workflow labels such as `Input signals: Add one or more`, `Current input signals`, `SkinSource Outputs`, and `Export, load, and save`.
 - Citation and links to the paper DOI and original GitHub repository are visible and styled as links.
 - The in-app README link opens a formatted static HTML guide that works under the GitHub Pages relative base path.
 - Buttons, font sizes, spacing, and labels are consistent and compact.

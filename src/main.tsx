@@ -363,13 +363,11 @@ function App() {
     const stimulus = makePendingStimulus(location);
     if (!stimulus) return;
     setStimuli((current) =>
-      mode === "replace"
-        ? [...current.filter((item) => item.location !== location), stimulus]
-        : [...current, stimulus],
+      mode === "replace" ? [stimulus] : [...current, stimulus],
     );
     setEditingStimulusId(null);
     setStatus(
-      `${mode === "replace" ? "Replaced" : "Added"} ${stimulus.label} at input ${location}`,
+      `${mode === "replace" ? "Replaced all inputs with" : "Added"} ${stimulus.label} at input ${location}`,
     );
   }
 
@@ -621,6 +619,8 @@ function App() {
   }, [appData, model, projection, stimuli]);
 
   const ready = Boolean(appData);
+  const preloadPercent =
+    preload.total > 0 ? Math.round((100 * preload.loaded) / preload.total) : 0;
   const modelScale =
     appData?.manifest.models.find((entry) => entry.id === model)?.pixelToMmScale ?? 1;
 
@@ -647,21 +647,15 @@ function App() {
           >
             Paper
           </a>
-          <a
-            href="https://github.com/neelitummala/skinsource"
-            target="_blank"
-            rel="noreferrer"
-            title="Open the original SkinSource repository"
-          >
-            SkinSource on GitHub
-          </a>
         </nav>
         <div className="top-status">
           <span className="status-pill">
             <Database size={14} aria-hidden="true" />
-            {preload.loaded}/{preload.total}
+            {preloadPercent}% data loaded
           </span>
-          <span className="status-text">{loadError ?? status}</span>
+          <span className="sr-only" aria-live="polite">
+            {loadError ?? status}
+          </span>
         </div>
       </header>
 
@@ -690,7 +684,7 @@ function App() {
             {controlsCollapsed ? null : (
               <div className="control-panel-body">
                 <div className="control-group">
-                  <h2>Add 1 or more input signals</h2>
+                  <h2>Input signals: Add one or more</h2>
                   <label title="Choose the SkinSource limb recording and impulse-response set.">
                     Upper-limb recording
                     <select
@@ -843,10 +837,10 @@ function App() {
                       type="button"
                       onClick={() => addStimulus("replace")}
                       disabled={!ready}
-                      title="Replace existing stimuli at this input location with the current stimulus."
+                      title="Replace all current input signals with this stimulus."
                     >
                       <RefreshCw size={13} aria-hidden="true" />
-                      Replace
+                      Replace all
                     </button>
                   </div>
                 </div>
@@ -919,7 +913,7 @@ function App() {
                   <h2>SkinSource Outputs</h2>
                   <p className="render-summary">
                     {projected
-                      ? `Current response: limb ${model} · ${projected.samples} samples at ${projected.sampleRateHz} Hz · ${selectedOutputs.length} output${selectedOutputs.length === 1 ? "" : "s"} selected`
+                      ? `Current outputs: ${selectedOutputs.join(", ")}. ${projected.samples} samples at ${(projected.sampleRateHz / 1000).toFixed(1)} kHz`
                       : "Add an input signal to calculate the response."}
                   </p>
                   <select
@@ -1593,7 +1587,7 @@ function TraceView({
           y: trace,
           color: outputColor(index),
         }))}
-        height={158}
+        height={136}
         yRange={yRange}
       />
     );
@@ -1610,7 +1604,9 @@ function TraceView({
             yUnit="m/s²"
             x={timeMs}
             y={trace}
-            height={selectedOutputs.length === 1 ? 150 : index === traces.length - 1 ? 108 : 84}
+            height={
+              selectedOutputs.length === 1 ? 134 : index === traces.length - 1 ? 98 : 76
+            }
             yRange={yRange}
             color={outputColor(index)}
             showXAxis={selectedOutputs.length === 1 || index === traces.length - 1}
@@ -1653,7 +1649,7 @@ function SpectrumView({
           y: spectrum.magnitudes,
           color: outputColor(index),
         }))}
-        height={158}
+        height={136}
         yRange={yRange}
         xLog={logX}
         yLog={logY}
@@ -1672,7 +1668,9 @@ function SpectrumView({
             yUnit="m/s²"
             x={spectrum.frequenciesHz}
             y={spectrum.magnitudes}
-            height={selectedOutputs.length === 1 ? 150 : index === spectra.length - 1 ? 108 : 84}
+            height={
+              selectedOutputs.length === 1 ? 134 : index === spectra.length - 1 ? 98 : 76
+            }
             yRange={yRange}
             xLog={logX}
             yLog={logY}

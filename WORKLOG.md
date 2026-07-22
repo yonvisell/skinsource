@@ -800,3 +800,37 @@ Browser checks:
 - Confirmed changing the selected signal location to Loc 8 updates the row and triggers the surface render indication.
 - Confirmed the revised phone layout has no horizontal overflow and keeps the surface-header controls and guidance separated.
 - Confirmed `/readme.html` shows the local-first validation statement without horizontal overflow.
+
+## 2026-07-21 Revision Pass: Compact Status and Workspace Fit
+
+Implemented the requested loading, response-summary, map-proportion, and control-consistency refinements.
+
+Changes:
+
+- Replaced the chunk-count/status pair with a compact percentage badge such as `100% data loaded`; detailed loading and error status remains available to assistive technology.
+- Removed the redundant GitHub link from the top navigation while retaining the paper link and the complete paper/GitHub footer citation.
+- Changed the input heading to `Input signals: Add one or more`.
+- Replaced the boxed response summary with inset teal text in the form `Current outputs: 29, 52. 846 samples at 1.3 kHz`.
+- Renamed `Replace` to `Replace all` and made it replace the complete current input list so its behavior matches its label.
+- Applied subtle fills to native selectors, `Replace all`, and inactive segmented controls for consistent affordance.
+- Uniformly scaled the input-location SVG to 85% while keeping the bitmap, labels, and clickable regions registered and centered.
+- Overlaid the surface header on wide layouts so the limb occupies the full panel height; narrow layouts retain the stacked header.
+- Increased the map-row allocation slightly, reduced both analysis plots, and added footer bottom padding so the citation fits at the bottom of a 900 px desktop view.
+
+Verification:
+
+```bash
+npm run test
+npm run build
+git diff --check
+```
+
+Results and browser checks:
+
+- Vitest passed: 3 files, 10 tests.
+- Production build passed.
+- `Replace all` was tested after adding a duplicate input: two current rows were reduced to one.
+- At `1440 x 900`, the surface outline had approximately 13 px top and bottom panel margins, the input SVG measured 85% of its prior height, both plot panels measured 179 px, and the footer ended at 900 px.
+- At `1000 x 800`, the overlaid surface header remained legible, the map row retained its bounded 448 px height, and no horizontal overflow occurred.
+- At `390 x 844`, the surface header returned to normal document flow, controls remained readable, and no horizontal overflow occurred.
+- Browser console inspection reported no warnings or errors.
